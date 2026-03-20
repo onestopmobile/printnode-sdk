@@ -1,0 +1,104 @@
+{
+    "$schema": "https://getcomposer.org/schema.json",
+    "name": "onestopmobile/printnode-sdk",
+    "description": "PrintNode integration for PHP and Laravel to send print jobs, shipping labels, PDFs, and ZPL to remote printers.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "printnode",
+        "laravel",
+        "php",
+        "cloud-printing",
+        "print-jobs",
+        "label-printing",
+        "shipping-labels",
+        "pdf-printing",
+        "zpl"
+    ],
+    "authors": [
+        {
+            "name": "One Stop Mobile"
+        }
+    ],
+    "homepage": "https://github.com/onestopmobile/printnode-sdk",
+    "support": {
+        "issues": "https://github.com/onestopmobile/printnode-sdk/issues",
+        "source": "https://github.com/onestopmobile/printnode-sdk",
+        "docs": "https://github.com/onestopmobile/printnode-sdk#readme"
+    },
+    "require": {
+        "php": "^8.5",
+        "psr/log": "^3.0",
+        "saloonphp/saloon": "^3.15"
+    },
+    "autoload": {
+        "psr-4": {
+            "OneStopMobile\\PrintNodeSdk\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "format": "vendor/bin/pint",
+        "analyse": "vendor/bin/phpstan analyse",
+        "rector": "vendor/bin/rector process",
+        "lint": [
+            "@rector",
+            "@format"
+        ],
+        "test:coverage": "vendor/bin/pest --coverage-clover coverage.xml",
+        "test:type-coverage": "vendor/bin/pest --type-coverage --min=100",
+        "test:unit": "vendor/bin/pest --parallel",
+        "smoke:get": "@php bin/smoke-get.php",
+        "test:lint": [
+            "vendor/bin/pint --parallel --test",
+            "vendor/bin/rector process --dry-run"
+        ],
+        "test:types": "vendor/bin/phpstan analyse",
+        "test": [
+            "@test:type-coverage",
+            "@test:unit",
+            "@test:lint",
+            "@test:types"
+        ],
+        "check": [
+            "@test:lint",
+            "@test:types"
+        ]
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "php-http/discovery": true
+        },
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "require-dev": {
+        "illuminate/container": "^12.0 || ^13.0",
+        "illuminate/support": "^12.0 || ^13.0",
+        "laravel/pint": "^1.29",
+        "pestphp/pest": "^4.4",
+        "pestphp/pest-plugin-type-coverage": "^4.0",
+        "phpstan/phpstan": "^2.1",
+        "rector/rector": "^2.1",
+        "roave/security-advisories": "dev-latest",
+        "vlucas/phpdotenv": "^5.6"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "OneStopMobile\\PrintNodeSdk\\Laravel\\PrintNodeServiceProvider"
+            ],
+            "aliases": {
+                "DispatchPrint": "OneStopMobile\\PrintNodeSdk\\Laravel\\Facades\\DispatchPrint"
+            }
+        }
+    }
+}

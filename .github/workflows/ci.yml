@@ -1,0 +1,154 @@
+name: tests
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: Package checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+          tools: composer:v2
+          cache: composer
+
+      - name: Cache Rector
+        uses: actions/cache@v4
+        with:
+          path: /tmp/rector
+          key: ${{ runner.os }}-rector-php85-${{ hashFiles('composer.lock', 'rector.php') }}
+          restore-keys: |
+            ${{ runner.os }}-rector-php85-
+
+      - name: Cache PHPStan
+        uses: actions/cache@v4
+        with:
+          path: /tmp/phpstan
+          key: ${{ runner.os }}-phpstan-php85-${{ hashFiles('composer.lock', 'phpstan.neon.dist') }}
+          restore-keys: |
+            ${{ runner.os }}-phpstan-php85-
+
+      - name: Create cache directories
+        run: mkdir -p /tmp/rector /tmp/phpstan
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress --optimize-autoloader
+
+      - name: Run package checks
+        run: composer test
+
+  prefer-lowest:
+    name: Prefer lowest dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+          tools: composer:v2
+          cache: composer
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Install lowest supported dependencies
+        run: composer update --prefer-lowest --prefer-stable --no-interaction --no-progress --prefer-dist
+
+      - name: Run lowest dependency checks
+        run: composer test:unit
+
+  laravel-compatibility:
+    name: Laravel compatibility (${{ matrix.laravel-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        laravel-version:
+          - '^12.0'
+          - '^13.0'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+          tools: composer:v2
+          cache: composer
+
+      - name: Pin Laravel test dependencies
+        run: composer require --dev --no-update --no-interaction "illuminate/container:${{ matrix.laravel-version }}" "illuminate/support:${{ matrix.laravel-version }}"
+
+      - name: Install Laravel compatibility dependencies
+        run: composer update --with-all-dependencies --prefer-dist --no-interaction --no-progress
+
+      - name: Run Laravel integration tests
+        run: php vendor/bin/pest tests/LaravelServiceProviderTest.php
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: xdebug
+          tools: composer:v2
+          cache: composer
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress --optimize-autoloader
+
+      - name: Generate coverage report
+        run: composer test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false

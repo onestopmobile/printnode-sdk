@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OneStopMobile\PrintNodeSdk\Resources;
 
 use OneStopMobile\PrintNodeSdk\Data\ScaleData;
+use OneStopMobile\PrintNodeSdk\Data\ScaleTestResultData;
 use OneStopMobile\PrintNodeSdk\Http\Requests\EndpointRequest;
 use OneStopMobile\PrintNodeSdk\Http\Requests\JsonEndpointRequest;
 use OneStopMobile\PrintNodeSdk\Values\ChildAccountContext;
@@ -64,8 +65,11 @@ final readonly class ScalesResource extends AbstractResource
     /**
      * @param  array<string, mixed>  $payload
      */
-    public function test(array $payload, ?ChildAccountContext $childAccount = null): mixed
+    public function test(array $payload, ?ChildAccountContext $childAccount = null): ScaleTestResultData
     {
-        return $this->send(new JsonEndpointRequest(Method::PUT, '/scale', $payload, $childAccount));
+        return ScaleTestResultData::fromArray($this->mapResponse(
+            $this->send(new JsonEndpointRequest(Method::PUT, '/scale', $payload, $childAccount)),
+            'PUT /scale',
+        ));
     }
 }

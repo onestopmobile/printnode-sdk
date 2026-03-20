@@ -47,8 +47,9 @@ final readonly class ComputersResource extends AbstractResource
 
     /**
      * @param  int|array<int>|CommaSeparatedIdSet|string|null  $computerSet
+     * @return list<int|string>
      */
-    public function delete(int|array|CommaSeparatedIdSet|string|null $computerSet = null, ?ChildAccountContext $childAccount = null): mixed
+    public function delete(int|array|CommaSeparatedIdSet|string|null $computerSet = null, ?ChildAccountContext $childAccount = null): array
     {
         $endpoint = '/computers';
 
@@ -56,6 +57,9 @@ final readonly class ComputersResource extends AbstractResource
             $endpoint .= '/'.CommaSeparatedIdSet::from($computerSet);
         }
 
-        return $this->send(new EndpointRequest(Method::DELETE, $endpoint, $childAccount));
+        return $this->identifierListResponse(
+            $this->send(new EndpointRequest(Method::DELETE, $endpoint, $childAccount)),
+            'DELETE /computers',
+        );
     }
 }

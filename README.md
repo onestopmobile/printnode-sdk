@@ -76,6 +76,22 @@ PRINTNODE_PRINT_LOG_INCLUDE_CONTENT_LENGTH=true
 - `downloads`
 - `misc` endpoints like `ping` and `noop`
 
+## SDK Endpoint Matrix
+
+| API area | SDK entry point | Public methods |
+| --- | --- | --- |
+| `whoami` | `whoAmI()`, `whoAmIResource()` | `get()` |
+| `computers` | `computers()` | `all()`, `get()`, `delete()` |
+| `printers` | `printers()` | `all()` |
+| `printjobs` | `printJobs()` | `all()`, `get()`, `create()`, `delete()`, `states()`, `byPrinters()`, `deleteByPrinters()` |
+| `downloads` | `downloads()` | `all()`, `get()`, `latest()`, `update()` |
+| `scales` | `scales()` | `listConnected()`, `all()`, `byDeviceName()`, `get()`, `test()` |
+| `webhooks` | `webhooks()` | `all()`, `create()`, `update()`, `delete()` |
+| `account` | `account()` | `create()`, `update()`, `delete()`, `controllable()`, `getState()`, `setState()`, `getTag()`, `setTag()`, `deleteTag()`, `getApiKey()`, `createApiKey()`, `deleteApiKey()`, `clientKey()` |
+| `misc` | `misc()` | `ping()`, `noop()` |
+
+Full low-level SDK reference: [docs/sdk-reference.md](docs/sdk-reference.md).
+
 ## Typed API Usage
 
 ```php
@@ -89,6 +105,7 @@ $sdk = new PrintNodeSdk(new PrintNodeConfig(
 ));
 
 $whoAmI = $sdk->whoAmI();
+$email = $whoAmI->email;
 $computers = $sdk->computers()->all();
 $printers = $sdk->printers()->all();
 
@@ -100,6 +117,24 @@ $printJobId = $sdk->printJobs()->create(
         content: 'https://example.com/label.pdf',
     ),
     idempotencyKey: 'label-123',
+);
+```
+
+## Typed child-account creation
+
+```php
+use OneStopMobile\PrintNodeSdk\Payloads\CreateChildAccountPayload;
+
+$childAccount = $sdk->account()->create(
+    new CreateChildAccountPayload(
+        email: 'child@example.com',
+        password: 'secret-password',
+        creatorRef: 'customer-123',
+        apiKeys: ['production'],
+        tags: [
+            'customer_id' => '123',
+        ],
+    ),
 );
 ```
 

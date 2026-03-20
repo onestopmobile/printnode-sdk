@@ -40,8 +40,11 @@ final readonly class WebhooksResource extends AbstractResource
         return WebhookData::fromArray($webhook);
     }
 
-    public function delete(int $id, ?ChildAccountContext $childAccount = null): mixed
+    public function delete(int $id, ?ChildAccountContext $childAccount = null): string
     {
-        return $this->send(new EndpointRequest(Method::DELETE, sprintf('/webhook/%d', $id), $childAccount));
+        return $this->stringResponse(
+            $this->send(new EndpointRequest(Method::DELETE, sprintf('/webhook/%d', $id), $childAccount)),
+            'DELETE /webhook',
+        );
     }
 }

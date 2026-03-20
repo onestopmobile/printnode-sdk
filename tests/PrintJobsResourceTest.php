@@ -47,8 +47,8 @@ it('creates and scopes print jobs through the sdk', function (): void {
 
     expect($createdId)->toBe(1234)
         ->and($jobs)->toHaveCount(2)
-        ->and($jobs[0]->attributes['id'])->toBe(10)
-        ->and($states[0][0]->attributes['state'])->toBe('queued');
+        ->and($jobs[0]->id)->toBe(10)
+        ->and($states[0][0]->state)->toBe('queued');
 
     $mockClient->assertSent(function ($request, $response): bool {
         $pendingRequest = $response->getPendingRequest();

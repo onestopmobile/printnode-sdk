@@ -28,9 +28,7 @@ it('handles account, download, scale, webhook and misc endpoints', function (): 
         ]),
         MockResponse::make('laser'),
         MockResponse::make('api-key-value'),
-        MockResponse::make([
-            'clientKey' => 'client-123',
-        ]),
+        MockResponse::make('client-123'),
         MockResponse::make([
             'id' => 18,
             'os' => 'windows',
@@ -76,29 +74,31 @@ it('handles account, download, scale, webhook and misc endpoints', function (): 
     $apiKey = $sdk->account()->getApiKey('warehouse');
     $clientKey = $sdk->account()->clientKey('client-123', version: '4.7.1', edition: 'printnode');
     $download = $sdk->downloads()->latest(OperatingSystem::Windows);
-    $sdk->downloads()->update(18, new DownloadClientPatchPayload(['enabled' => true]));
+    $updatedDownload = $sdk->downloads()->update(18, new DownloadClientPatchPayload(enabled: true));
     $scales = $sdk->scales()->listConnected();
     $deviceScales = $sdk->scales()->byDeviceName(1, 'Scale A');
     $scale = $sdk->scales()->get(1, 'Scale A', 0);
-    $sdk->scales()->test(['deviceName' => 'Scale A']);
+    $scaleTest = $sdk->scales()->test(['deviceName' => 'Scale A']);
     $webhooks = $sdk->webhooks()->all();
     $createdWebhook = $sdk->webhooks()->create(new WebhookPayload('https://example.com/hook'));
     $updatedWebhook = $sdk->webhooks()->update(188, new WebhookPayload('https://example.com/hook-updated'));
     $ping = $sdk->misc()->ping();
     $noop = $sdk->misc()->noop();
 
-    expect($whoAmI->attributes['email'])->toBe('hello@example.com')
+    expect($whoAmI->email)->toBe('hello@example.com')
         ->and($state)->toBe('active')
         ->and($tag)->toBe('laser')
         ->and($apiKey)->toBe('api-key-value')
-        ->and($clientKey['clientKey'])->toBe('client-123')
-        ->and($download->attributes['id'])->toBe(18)
-        ->and($scales[0]->attributes['deviceName'])->toBe('Scale A')
-        ->and($deviceScales[0]->attributes['deviceName'])->toBe('Scale A')
-        ->and($scale->attributes['deviceNum'])->toBe(0)
-        ->and($webhooks[0]->attributes['id'])->toBe(188)
-        ->and($createdWebhook->attributes['url'])->toBe('https://example.com/hook')
-        ->and($updatedWebhook->attributes['url'])->toBe('https://example.com/hook-updated')
+        ->and($clientKey)->toBe('client-123')
+        ->and($download->id)->toBe(18)
+        ->and($updatedDownload->updated)->toBeTrue()
+        ->and($scales[0]->deviceName)->toBe('Scale A')
+        ->and($deviceScales[0]->deviceName)->toBe('Scale A')
+        ->and($scale->deviceNumber)->toBe(0)
+        ->and($scaleTest->ok)->toBeTrue()
+        ->and($webhooks[0]->id)->toBe(188)
+        ->and($createdWebhook->url)->toBe('https://example.com/hook')
+        ->and($updatedWebhook->url)->toBe('https://example.com/hook-updated')
         ->and($ping)->toBe('pong')
         ->and($noop)->toBe('noop-ok');
 

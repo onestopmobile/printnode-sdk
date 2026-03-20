@@ -52,8 +52,8 @@ final readonly class PrintJobsResource extends AbstractResource
         CreatePrintJobPayload $payload,
         ?string $idempotencyKey = null,
         ?ChildAccountContext $childAccount = null,
-    ): mixed {
-        return $this->send(new JsonEndpointRequest(
+    ): int|string {
+        return $this->printJobIdResponse($this->send(new JsonEndpointRequest(
             Method::POST,
             '/printjobs',
             $payload->toArray(),
@@ -61,13 +61,14 @@ final readonly class PrintJobsResource extends AbstractResource
             extraHeaders: array_filter([
                 'X-Idempotency-Key' => is_string($idempotencyKey) && $idempotencyKey !== '' ? $idempotencyKey : null,
             ], static fn (?string $value): bool => $value !== null),
-        ));
+        )));
     }
 
     /**
      * @param  int|array<int>|CommaSeparatedIdSet|string|null  $printJobSet
+     * @return list<int|string>
      */
-    public function delete(int|array|CommaSeparatedIdSet|string|null $printJobSet = null, ?ChildAccountContext $childAccount = null): mixed
+    public function delete(int|array|CommaSeparatedIdSet|string|null $printJobSet = null, ?ChildAccountContext $childAccount = null): array
     {
         $endpoint = '/printjobs';
 
@@ -75,7 +76,10 @@ final readonly class PrintJobsResource extends AbstractResource
             $endpoint .= '/'.CommaSeparatedIdSet::from($printJobSet);
         }
 
-        return $this->send(new EndpointRequest(Method::DELETE, $endpoint, $childAccount));
+        return $this->identifierListResponse(
+            $this->send(new EndpointRequest(Method::DELETE, $endpoint, $childAccount)),
+            'DELETE /printjobs',
+        );
     }
 
     /**
@@ -133,18 +137,22 @@ final readonly class PrintJobsResource extends AbstractResource
     /**
      * @param  int|array<int>|CommaSeparatedIdSet|string  $printerSet
      * @param  int|array<int>|CommaSeparatedIdSet|string|null  $printJobSet
+     * @return list<int|string>
      */
     public function deleteByPrinters(
         int|array|CommaSeparatedIdSet|string $printerSet,
         int|array|CommaSeparatedIdSet|string|null $printJobSet = null,
         ?ChildAccountContext $childAccount = null,
-    ): mixed {
+    ): array {
         $endpoint = '/printers/'.CommaSeparatedIdSet::from($printerSet).'/printjobs';
 
         if ($printJobSet !== null) {
             $endpoint .= '/'.CommaSeparatedIdSet::from($printJobSet);
         }
 
-        return $this->send(new EndpointRequest(Method::DELETE, $endpoint, $childAccount));
+        return $this->identifierListResponse(
+            $this->send(new EndpointRequest(Method::DELETE, $endpoint, $childAccount)),
+            'DELETE /printers/.../printjobs',
+        );
     }
 }

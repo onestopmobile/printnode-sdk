@@ -61,15 +61,15 @@ $checks = [
         'value' => $sdk->misc()->ping(),
     ],
     'whoami' => static fn (): array => [
-        'email' => $sdk->whoAmI()->attributes['email'] ?? null,
-        'accounts' => $sdk->whoAmI()->attributes['accounts'] ?? null,
+        'email' => $sdk->whoAmI()->email,
+        'childAccounts' => $sdk->whoAmI()->childAccounts,
     ],
     'computers' => static function () use ($sdk): array {
         $computers = $sdk->computers()->all();
 
         return [
             'count' => count($computers),
-            'first' => $computers[0]->attributes['name'] ?? null,
+            'first' => $computers[0]->name ?? null,
         ];
     },
     'printers' => static function () use ($sdk): array {
@@ -77,7 +77,7 @@ $checks = [
 
         return [
             'count' => count($printers),
-            'first' => $printers[0]->attributes['name'] ?? null,
+            'first' => $printers[0]->name ?? null,
         ];
     },
     'printjobs(limit=5)' => static function () use ($sdk): array {
@@ -85,7 +85,7 @@ $checks = [
 
         return [
             'count' => count($jobs),
-            'firstId' => $jobs[0]->attributes['id'] ?? null,
+            'firstId' => $jobs[0]->id ?? null,
         ];
     },
     'printjob-states(limit=5)' => static function () use ($sdk): array {
@@ -100,7 +100,7 @@ $checks = [
 
         return [
             'count' => count($downloads),
-            'firstId' => $downloads[0]->attributes['id'] ?? null,
+            'firstId' => $downloads[0]->id ?? null,
         ];
     },
 ];
@@ -122,7 +122,7 @@ if ($showExtended) {
 
             return [
                 'count' => count($webhooks),
-                'firstId' => $webhooks[0]->attributes['id'] ?? null,
+                'firstId' => $webhooks[0]->id ?? null,
             ];
         },
         'connected-scales' => static function () use ($sdk): array {

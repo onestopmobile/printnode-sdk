@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use OneStopMobile\PrintNodeSdk\Payloads\CreateAccountPayload;
-use OneStopMobile\PrintNodeSdk\Payloads\UpdateAccountPayload;
+use OneStopMobile\PrintNodeSdk\Payloads\CreateChildAccountPayload;
+use OneStopMobile\PrintNodeSdk\Payloads\UpdateChildAccountPayload;
 use OneStopMobile\PrintNodeSdk\PrintNodeConfig;
 use OneStopMobile\PrintNodeSdk\PrintNodeSdk;
 use OneStopMobile\PrintNodeSdk\Values\ChildAccountContext;
@@ -19,16 +19,23 @@ it('covers additional account endpoints and creator-ref child account headers', 
     $childAccount = ChildAccountContext::byCreatorRef('warehouse-ref');
     $mockClient = new MockClient([
         MockResponse::make([
-            'id' => 101,
-            'email' => 'created@example.com',
+            'Account' => [
+                'id' => 101,
+                'firstname' => '-',
+                'lastname' => '-',
+                'email' => 'created@example.com',
+                'creatorRef' => 'warehouse-ref',
+            ],
+            'ApiKeys' => ['Warehouse Key'],
+            'Tags' => [
+                'warehouse' => 'A1',
+            ],
         ]),
         MockResponse::make([
             'id' => 101,
             'email' => 'updated@example.com',
         ]),
-        MockResponse::make([
-            'deleted' => true,
-        ]),
+        MockResponse::make(''),
         MockResponse::make([
             [
                 'id' => 201,
@@ -48,18 +55,23 @@ it('covers additional account endpoints and creator-ref child account headers', 
     $sdk->connector()->withMockClient($mockClient);
 
     $created = $sdk->account()->create(
-        new CreateAccountPayload([
-            'email' => 'created@example.com',
-        ]),
-        $childAccount,
+        new CreateChildAccountPayload(
+            email: 'created@example.com',
+            password: 'secret-password',
+            creatorRef: 'warehouse-ref',
+            apiKeys: ['Warehouse Key'],
+            tags: [
+                'warehouse' => 'A1',
+            ],
+        ),
     );
     $updated = $sdk->account()->update(
-        new UpdateAccountPayload([
-            'email' => 'updated@example.com',
-        ]),
+        new UpdateChildAccountPayload(
+            email: 'updated@example.com',
+        ),
         $childAccount,
     );
-    $deleted = $sdk->account()->delete($childAccount);
+    $sdk->account()->delete($childAccount);
     $controllable = $sdk->account()->controllable($childAccount);
     $tagSaved = $sdk->account()->setTag('warehouse tag', 'laser', $childAccount);
     $tagDeleted = $sdk->account()->deleteTag('warehouse tag', $childAccount);
@@ -69,11 +81,12 @@ it('covers additional account endpoints and creator-ref child account headers', 
     expect($childAccount->toHeaders())->toBe([
         'X-Child-Account-By-CreatorRef' => 'warehouse-ref',
     ])
-        ->and($created['id'])->toBe(101)
-        ->and($updated->attributes['email'])->toBe('updated@example.com')
-        ->and($deleted['deleted'])->toBeTrue()
+        ->and($created->id)->toBe(101)
+        ->and($created->apiKeys)->toBe(['Warehouse Key'])
+        ->and($created->tags)->toBe(['warehouse' => 'A1'])
+        ->and($updated->email)->toBe('updated@example.com')
         ->and($controllable)->toHaveCount(2)
-        ->and($controllable[0]->attributes['id'])->toBe(201)
+        ->and($controllable[0]->id)->toBe(201)
         ->and($tagSaved)->toBe('tag-saved')
         ->and($tagDeleted)->toBe('tag-deleted')
         ->and($apiKeyCreated)->toBe('api-key-created')
@@ -83,9 +96,18 @@ it('covers additional account endpoints and creator-ref child account headers', 
         $pendingRequest = $response->getPendingRequest();
 
         return $pendingRequest->getUrl() === 'https://api.printnode.test/account'
-            && $pendingRequest->headers()->all()['X-Child-Account-By-CreatorRef'] === 'warehouse-ref'
             && json_decode((string) $pendingRequest->body(), true, 512, JSON_THROW_ON_ERROR) === [
-                'email' => 'created@example.com',
+                'Account' => [
+                    'firstname' => '-',
+                    'lastname' => '-',
+                    'email' => 'created@example.com',
+                    'password' => 'secret-password',
+                    'creatorRef' => 'warehouse-ref',
+                ],
+                'ApiKeys' => ['Warehouse Key'],
+                'Tags' => [
+                    'warehouse' => 'A1',
+                ],
             ];
     });
 
@@ -115,8 +137,8 @@ it('covers additional collection and deletion resource endpoints', function (): 
                 'state' => 'connected',
             ],
         ]),
-        MockResponse::make('deleted-all-computers'),
-        MockResponse::make('deleted-selected-computers'),
+        MockResponse::make([575407, 609529]),
+        MockResponse::make([575407]),
         MockResponse::make([
             [
                 'id' => 18,
@@ -160,14 +182,14 @@ it('covers additional collection and deletion resource endpoints', function (): 
     $deletedWebhook = $sdk->webhooks()->delete(188);
 
     expect($computers)->toHaveCount(2)
-        ->and($computers[0]->attributes['id'])->toBe(575407)
-        ->and($deletedAllComputers)->toBe('deleted-all-computers')
-        ->and($deletedSelectedComputers)->toBe('deleted-selected-computers')
+        ->and($computers[0]->id)->toBe(575407)
+        ->and($deletedAllComputers)->toBe([575407, 609529])
+        ->and($deletedSelectedComputers)->toBe([575407])
         ->and($downloads)->toHaveCount(2)
         ->and($selectedDownloads)->toHaveCount(1)
-        ->and($selectedDownloads[0]->attributes['id'])->toBe(18)
-        ->and($printers[0]->attributes['id'])->toBe(42)
-        ->and($scales[0]->attributes['deviceName'])->toBe('Scale A')
+        ->and($selectedDownloads[0]->id)->toBe(18)
+        ->and($printers[0]->id)->toBe(42)
+        ->and($scales[0]->deviceName)->toBe('Scale A')
         ->and($deletedWebhook)->toBe('webhook-deleted');
 
     $mockClient->assertSent(fn ($request, $response): bool => $response->getPendingRequest()->getUrl() === 'https://api.printnode.test/computers/575407,609529');
@@ -209,8 +231,8 @@ it('covers additional print job resource methods', function (): void {
                 'state' => 'queued',
             ],
         ]),
-        MockResponse::make('deleted-all-jobs'),
-        MockResponse::make('deleted-selected-jobs'),
+        MockResponse::make([10, 11]),
+        MockResponse::make([12, 13]),
         MockResponse::make([
             [
                 [
@@ -218,7 +240,7 @@ it('covers additional print job resource methods', function (): void {
                 ],
             ],
         ]),
-        MockResponse::make('deleted-by-printer'),
+        MockResponse::make([12, 13]),
     ]);
 
     $sdk->connector()->withMockClient($mockClient);
@@ -232,10 +254,10 @@ it('covers additional print job resource methods', function (): void {
 
     expect($allJobs)->toHaveCount(2)
         ->and($selectedJobs)->toHaveCount(1)
-        ->and($deletedAllJobs)->toBe('deleted-all-jobs')
-        ->and($deletedSelectedJobs)->toBe('deleted-selected-jobs')
-        ->and($states[0][0]->attributes['state'])->toBe('queued')
-        ->and($deletedByPrinters)->toBe('deleted-by-printer');
+        ->and($deletedAllJobs)->toBe([10, 11])
+        ->and($deletedSelectedJobs)->toBe([12, 13])
+        ->and($states[0][0]->state)->toBe('queued')
+        ->and($deletedByPrinters)->toBe([12, 13]);
 
     $mockClient->assertSent(function ($request, $response): bool {
         $pendingRequest = $response->getPendingRequest();

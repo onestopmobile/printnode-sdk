@@ -7,10 +7,11 @@ namespace OneStopMobile\PrintNodeSdk\Payloads;
 final readonly class DownloadClientPatchPayload
 {
     /**
-     * @param  array<string, mixed>  $attributes
+     * @param  array<string, mixed>  $extra
      */
     public function __construct(
-        public array $attributes,
+        public ?bool $enabled = null,
+        public array $extra = [],
     ) {}
 
     /**
@@ -18,6 +19,9 @@ final readonly class DownloadClientPatchPayload
      */
     public function toArray(): array
     {
-        return $this->attributes;
+        return array_filter([
+            'enabled' => $this->enabled,
+            ...$this->extra,
+        ], static fn (mixed $value): bool => $value !== null);
     }
 }

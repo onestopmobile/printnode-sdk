@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OneStopMobile\PrintNodeSdk\Resources;
 
 use OneStopMobile\PrintNodeSdk\Data\DownloadClientData;
+use OneStopMobile\PrintNodeSdk\Data\DownloadClientUpdateData;
 use OneStopMobile\PrintNodeSdk\Enums\OperatingSystem;
 use OneStopMobile\PrintNodeSdk\Http\Requests\EndpointRequest;
 use OneStopMobile\PrintNodeSdk\Http\Requests\JsonEndpointRequest;
@@ -63,12 +64,17 @@ final readonly class DownloadsResource extends AbstractResource
         int|array|CommaSeparatedIdSet|string $downloadIds,
         DownloadClientPatchPayload $payload,
         ?ChildAccountContext $childAccount = null,
-    ): mixed {
-        return $this->send(new JsonEndpointRequest(
-            Method::PATCH,
-            '/download/clients/'.CommaSeparatedIdSet::from($downloadIds),
-            $payload->toArray(),
-            $childAccount,
-        ));
+    ): DownloadClientUpdateData {
+        return DownloadClientUpdateData::fromArray(
+            $this->mapResponse(
+                $this->send(new JsonEndpointRequest(
+                    Method::PATCH,
+                    '/download/clients/'.CommaSeparatedIdSet::from($downloadIds),
+                    $payload->toArray(),
+                    $childAccount,
+                )),
+                'PATCH /download/clients',
+            ),
+        );
     }
 }

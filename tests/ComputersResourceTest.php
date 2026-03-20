@@ -37,12 +37,10 @@ it('lists computers via the SDK resource', function (): void {
     $computers = $sdk->computers()->all(new Pagination(limit: 2, after: 10));
 
     expect($computers)->toHaveCount(2)
-        ->and($computers[0]->attributes)->toMatchArray([
-            'id' => 575407,
-            'hostname' => 'Magazijn2@WERKPLEK-6',
-            'state' => 'connected',
-        ])
-        ->and($computers[1]->attributes['id'])->toBe(609529);
+        ->and($computers[0]->id)->toBe(575407)
+        ->and($computers[0]->hostname)->toBe('Magazijn2@WERKPLEK-6')
+        ->and($computers[0]->state)->toBe('connected')
+        ->and($computers[1]->id)->toBe(609529);
 
     $lastResponse = $mockClient->getLastResponse();
     $url = $lastResponse?->getPendingRequest()->getUrl();
@@ -76,7 +74,8 @@ it('lists printers by computer set', function (): void {
     $printers = $sdk->printers()->all(printerSet: 42, computerSet: [12, 13]);
 
     expect($printers)->toHaveCount(1)
-        ->and($printers[0]->attributes['id'])->toBe(42);
+        ->and($printers[0]->id)->toBe(42)
+        ->and($printers[0]->computerId)->toBe(12);
 
     expect($mockClient->getLastResponse()?->getPendingRequest()->getUrl())
         ->toBe('https://api.printnode.test/computers/12,13/printers/42');

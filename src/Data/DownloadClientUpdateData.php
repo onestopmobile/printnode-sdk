@@ -4,19 +4,16 @@ declare(strict_types=1);
 
 namespace OneStopMobile\PrintNodeSdk\Data;
 
-final readonly class WebhookData extends AbstractData
+final readonly class DownloadClientUpdateData extends AbstractData
 {
     /**
      * @param  array<string, mixed>  $attributes
-     * @param  list<string>  $messages
      */
     private function __construct(
         array $attributes,
-        public ?int $id,
-        public ?string $url,
-        public array $messages,
-        public ?string $secret,
+        public ?bool $updated,
         public ?bool $enabled,
+        public ?string $message,
     ) {
         parent::__construct($attributes);
     }
@@ -28,11 +25,9 @@ final readonly class WebhookData extends AbstractData
     {
         return new self(
             attributes: $attributes,
-            id: self::intOrNull($attributes, 'id'),
-            url: self::stringOrNull($attributes, 'url'),
-            messages: self::stringListOrEmpty($attributes, 'messages'),
-            secret: self::stringOrNull($attributes, 'secret'),
+            updated: self::boolOrNull($attributes, 'updated'),
             enabled: self::boolOrNull($attributes, 'enabled'),
+            message: self::stringOrNull($attributes, 'message'),
         );
     }
 }

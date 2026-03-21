@@ -142,6 +142,11 @@ it('covers abstract resource response helpers for valid payloads', function (): 
         ->and($probe->identifierListValue(['7', 'job-uuid'], 'identifier payload'))->toBe([7, 'job-uuid'])
         ->and($probe->printJobIdValue('88'))->toBe(88)
         ->and($probe->printJobIdValue([
+            'data' => [
+                'id' => '99',
+            ],
+        ]))->toBe(99)
+        ->and($probe->printJobIdValue([
             'id' => 'job-uuid',
         ]))->toBe('job-uuid');
 });

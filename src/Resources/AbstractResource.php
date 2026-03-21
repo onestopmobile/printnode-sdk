@@ -81,6 +81,17 @@ abstract readonly class AbstractResource
 
     protected function printJobIdResponse(mixed $payload): int|string
     {
+        $printJobId = $this->extractPrintJobId($payload);
+
+        if ($printJobId !== null) {
+            return $printJobId;
+        }
+
+        throw new UnexpectedValueException('Expected the PrintNode API to return a recognizable print job identifier.');
+    }
+
+    private function extractPrintJobId(mixed $payload): int|string|null
+    {
         if (is_int($payload)) {
             return $payload;
         }
@@ -89,10 +100,26 @@ abstract readonly class AbstractResource
             return ctype_digit($payload) ? (int) $payload : $payload;
         }
 
-        if (is_array($payload) && isset($payload['id']) && (is_int($payload['id']) || is_string($payload['id']))) {
+        if (! is_array($payload)) {
+            return null;
+        }
+
+        if (isset($payload['id']) && (is_int($payload['id']) || is_string($payload['id']))) {
             return is_string($payload['id']) && ctype_digit($payload['id']) ? (int) $payload['id'] : $payload['id'];
         }
 
-        throw new UnexpectedValueException('Expected the PrintNode API to return a recognizable print job identifier.');
+        foreach ($payload as $value) {
+            if (! is_array($value)) {
+                continue;
+            }
+
+            $nestedPrintJobId = $this->extractPrintJobId($value);
+
+            if ($nestedPrintJobId !== null) {
+                return $nestedPrintJobId;
+            }
+        }
+
+        return null;
     }
 }

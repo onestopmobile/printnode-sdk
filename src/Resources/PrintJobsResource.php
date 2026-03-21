@@ -8,9 +8,11 @@ use OneStopMobile\PrintNodeSdk\Data\PrintJobData;
 use OneStopMobile\PrintNodeSdk\Data\PrintJobStateData;
 use OneStopMobile\PrintNodeSdk\Http\Requests\EndpointRequest;
 use OneStopMobile\PrintNodeSdk\Http\Requests\JsonEndpointRequest;
+use OneStopMobile\PrintNodeSdk\Http\Responses\PrintNodeResponse;
 use OneStopMobile\PrintNodeSdk\Payloads\CreatePrintJobPayload;
 use OneStopMobile\PrintNodeSdk\Values\ChildAccountContext;
 use OneStopMobile\PrintNodeSdk\Values\CommaSeparatedIdSet;
+use OneStopMobile\PrintNodeSdk\Values\CreatedPrintJobResult;
 use OneStopMobile\PrintNodeSdk\Values\Pagination;
 use Saloon\Enums\Method;
 
@@ -53,15 +55,24 @@ final readonly class PrintJobsResource extends AbstractResource
         ?string $idempotencyKey = null,
         ?ChildAccountContext $childAccount = null,
     ): int|string {
-        return $this->printJobIdResponse($this->send(new JsonEndpointRequest(
-            Method::POST,
-            '/printjobs',
-            $payload->toArray(),
-            $childAccount,
-            extraHeaders: array_filter([
-                'X-Idempotency-Key' => is_string($idempotencyKey) && $idempotencyKey !== '' ? $idempotencyKey : null,
-            ], static fn (?string $value): bool => $value !== null),
-        )));
+        return $this->createWithMetadata($payload, $idempotencyKey, $childAccount)->printJobId;
+    }
+
+    /**
+     * @internal Exposes request metadata for higher-level workflows like PrintManager.
+     */
+    public function createWithMetadata(
+        CreatePrintJobPayload $payload,
+        ?string $idempotencyKey = null,
+        ?ChildAccountContext $childAccount = null,
+    ): CreatedPrintJobResult {
+        /** @var PrintNodeResponse $response */
+        $response = $this->connector->send($this->createRequest($payload, $idempotencyKey, $childAccount));
+
+        return new CreatedPrintJobResult(
+            printJobId: $this->printJobIdResponse($response->dtoOrThrow()),
+            requestId: $response->requestId(),
+        );
     }
 
     /**
@@ -154,5 +165,26 @@ final readonly class PrintJobsResource extends AbstractResource
             $this->send(new EndpointRequest(Method::DELETE, $endpoint, $childAccount)),
             'DELETE /printers/.../printjobs',
         );
+    }
+
+    private function createRequest(
+        CreatePrintJobPayload $payload,
+        ?string $idempotencyKey = null,
+        ?ChildAccountContext $childAccount = null,
+    ): JsonEndpointRequest {
+        return new JsonEndpointRequest(
+            Method::POST,
+            '/printjobs',
+            $payload->toArray(),
+            $childAccount,
+            extraHeaders: array_filter([
+                'X-Idempotency-Key' => $this->idempotencyKeyHeader($idempotencyKey),
+            ], static fn (?string $value): bool => $value !== null),
+        );
+    }
+
+    private function idempotencyKeyHeader(?string $idempotencyKey): ?string
+    {
+        return is_string($idempotencyKey) && $idempotencyKey !== '' ? $idempotencyKey : null;
     }
 }

@@ -93,3 +93,33 @@ it('omits an empty idempotency key header on direct resource calls', function ()
         return ! array_key_exists('X-Idempotency-Key', $headers);
     });
 });
+
+it('accepts nested response payloads on direct resource calls', function (): void {
+    $sdk = new PrintNodeSdk(new PrintNodeConfig(
+        apiKey: 'printnode-api-key',
+        baseUrl: 'https://api.printnode.test',
+    ));
+
+    $mockClient = new MockClient([
+        MockResponse::make([
+            'data' => [
+                'id' => 4444,
+            ],
+        ], 200, [
+            'X-Request-Id' => 'req-print-nested',
+        ]),
+    ]);
+
+    $sdk->connector()->withMockClient($mockClient);
+
+    $createdId = $sdk->printJobs()->create(
+        new CreatePrintJobPayload(
+            printerId: 5,
+            title: 'Nested response job',
+            contentType: PrintContentType::PdfUri,
+            content: 'https://example.com/nested.pdf',
+        ),
+    );
+
+    expect($createdId)->toBe(4444);
+});

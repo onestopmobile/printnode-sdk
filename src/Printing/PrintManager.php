@@ -11,13 +11,12 @@ use OneStopMobile\PrintNodeSdk\Enums\PrintDispatchAction;
 use OneStopMobile\PrintNodeSdk\Exceptions\IncompletePrintJobException;
 use OneStopMobile\PrintNodeSdk\Exceptions\PrintDispatchBlockedException;
 use OneStopMobile\PrintNodeSdk\Exceptions\UnresolvablePrintTargetException;
-use OneStopMobile\PrintNodeSdk\Http\Requests\JsonEndpointRequest;
-use OneStopMobile\PrintNodeSdk\Http\Responses\PrintNodeResponse;
 use OneStopMobile\PrintNodeSdk\Payloads\CreatePrintJobPayload;
 use OneStopMobile\PrintNodeSdk\PrintNodeSdk;
+use OneStopMobile\PrintNodeSdk\Values\CreatedPrintJobResult;
 use Psr\Log\LoggerInterface;
-use Saloon\Enums\Method;
 use Throwable;
+use UnexpectedValueException;
 
 final readonly class PrintManager
 {
@@ -107,25 +106,15 @@ final readonly class PrintManager
         }
 
         try {
-            /** @var PrintNodeResponse $response */
-            $response = $this->sdk->connector()->send(new JsonEndpointRequest(
-                Method::POST,
-                '/printjobs',
-                $payload->toArray(),
-                extraHeaders: array_filter([
-                    'X-Idempotency-Key' => $this->nonEmptyStringOrNull($idempotencyKey),
-                ], static fn (?string $value): bool => $value !== null),
-            ));
-
-            $response->throwIfFailed();
+            $createdPrintJob = $this->createPrintJob($payload, $idempotencyKey);
 
             $result = PrintResult::sent(
-                printJobId: $this->extractPrintJobId($response->payload()),
+                printJobId: $createdPrintJob->printJobId,
                 printNodePrinterId: $resolvedTarget->printNodePrinterId,
                 title: $title,
                 contentType: $contentType,
                 source: $source,
-                requestId: $response->requestId(),
+                requestId: $createdPrintJob->requestId,
                 idempotencyKey: $idempotencyKey,
                 options: $options,
             );
@@ -210,29 +199,13 @@ final readonly class PrintManager
         ], JSON_THROW_ON_ERROR));
     }
 
-    private function extractPrintJobId(mixed $payload): int|string
+    private function createPrintJob(CreatePrintJobPayload $payload, ?string $idempotencyKey): CreatedPrintJobResult
     {
-        if (is_int($payload)) {
-            return $payload;
+        try {
+            return $this->sdk->printJobs()->createWithMetadata($payload, $idempotencyKey);
+        } catch (UnexpectedValueException $unexpectedValueException) {
+            throw new IncompletePrintJobException('The PrintNode API returned a successful response without a recognizable print job identifier.', $unexpectedValueException->getCode(), previous: $unexpectedValueException);
         }
-
-        if (is_string($payload) && is_numeric($payload)) {
-            return (int) $payload;
-        }
-
-        if (is_array($payload) && isset($payload['id']) && (is_int($payload['id']) || is_string($payload['id']))) {
-            return $payload['id'];
-        }
-
-        if (is_array($payload)) {
-            $nestedId = $this->extractNestedPrintJobId($payload);
-
-            if ($nestedId !== null) {
-                return $nestedId;
-            }
-        }
-
-        throw new IncompletePrintJobException('The PrintNode API returned a successful response without a recognizable print job identifier.');
     }
 
     private function logSkippedDispatch(PrintDispatchContext $dispatchContext, ?string $reason = null): void
@@ -299,32 +272,5 @@ final readonly class PrintManager
         }
 
         return $context;
-    }
-
-    private function nonEmptyStringOrNull(?string $value): ?string
-    {
-        return is_string($value) && $value !== '' ? $value : null;
-    }
-
-    /**
-     * @param  array<mixed>  $payload
-     */
-    private function extractNestedPrintJobId(array $payload): int|string|null
-    {
-        foreach ($payload as $key => $value) {
-            if ($key === 'id' && (is_int($value) || is_string($value))) {
-                return $value;
-            }
-
-            if (is_array($value)) {
-                $nestedId = $this->extractNestedPrintJobId($value);
-
-                if ($nestedId !== null) {
-                    return $nestedId;
-                }
-            }
-        }
-
-        return null;
     }
 }

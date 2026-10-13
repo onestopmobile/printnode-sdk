@@ -191,17 +191,21 @@ Options merge order:
 
 ## Idempotency
 
-You can set an explicit key:
+Give a print a key when sending it twice would be a mistake, for example a queued job that may be retried:
 
 ```php
-DispatchPrint::printer(123)
-    ->idempotencyKey('packing-slip-1001')
-    ->pdfUrl('https://example.com/packing-slip.pdf', title: 'Pakbon 1001');
+$result = DispatchPrint::printer(123)
+    ->idempotencyKey("receipt-{$receipt->id}")
+    ->raw($escPos, title: "Receipt {$receipt->number}");
 ```
 
-Or configure `default_idempotency_prefix` so the package derives a deterministic key from the print payload.
+PrintNode remembers keys for 24 hours. When the same key comes in again, it does not print a second time, and you get a `PrintResult` where `wasAlreadySent()` is true. That is not an error: the earlier attempt reached PrintNode, so nothing is missing. PrintNode does not return the earlier job's id, so `printJobId` is null. The lower-level `printJobs()->create()` throws a `DuplicatePrintJobException` (a `ConflictException`) in that case.
 
-Use that only when your app wants identical payloads to collapse into the same PrintNode request identity.
+Only you know when two prints are the same print. A reprint, or a second drawer kick with identical bytes, should not be blocked, so the package never invents a key. Prints without a key are always sent.
+
+`default_idempotency_prefix` is put in front of every key you set (`my-app-receipt-1001`), so two apps that share a PrintNode account cannot block each other with the same key.
+
+Requests with a key are also the only print jobs the connector retries (see `tries` in the config). Without a key, a retry could print the same document twice.
 
 ## Environment policy
 
@@ -343,6 +347,6 @@ PrintNode API errors still use the SDK exception tree:
 - `AuthorizationException`
 - `ValidationException`
 - `ResourceNotFoundException`
-- `ConflictException`
+- `ConflictException` (a reused idempotency key is not thrown here: it comes back as a `PrintResult` with `wasAlreadySent()`)
 - `RateLimitException`
 - `ApiErrorException`

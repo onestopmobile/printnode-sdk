@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OneStopMobile\PrintNodeSdk\Resources;
 
+use InvalidArgumentException;
 use OneStopMobile\PrintNodeSdk\Data\AccountData;
 use OneStopMobile\PrintNodeSdk\Data\CreatedChildAccountData;
 use OneStopMobile\PrintNodeSdk\Enums\AccountState;
@@ -19,9 +20,15 @@ final readonly class AccountResource extends AbstractResource
 {
     public function create(CreateChildAccountPayload $payload): CreatedChildAccountData
     {
+        // Only the integrator account can create child accounts, so never send a default child account along.
         return CreatedChildAccountData::fromArray(
             $this->mapResponse(
-                $this->send(new JsonEndpointRequest(Method::POST, '/account', $payload->toArray())),
+                $this->send(new JsonEndpointRequest(
+                    Method::POST,
+                    '/account',
+                    $payload->toArray(),
+                    ChildAccountContext::parentAccount(),
+                )),
                 'POST /account',
             ),
         );
@@ -37,8 +44,16 @@ final readonly class AccountResource extends AbstractResource
         );
     }
 
-    public function delete(?ChildAccountContext $childAccount = null): void
+    /**
+     * Delete a child account. The context is required on purpose: without one, the DELETE would
+     * run as the account behind your API key instead of the child account you meant.
+     */
+    public function delete(ChildAccountContext $childAccount): void
     {
+        if ($childAccount->isParentAccount()) {
+            throw new InvalidArgumentException('Pass the child account to delete. The SDK does not delete the integrator account itself.');
+        }
+
         $this->send(new EndpointRequest(Method::DELETE, '/account', $childAccount));
     }
 

@@ -13,6 +13,7 @@ use OneStopMobile\PrintNodeSdk\Exceptions\PrintDispatchBlockedException;
 use OneStopMobile\PrintNodeSdk\Exceptions\UnresolvablePrintTargetException;
 use OneStopMobile\PrintNodeSdk\Payloads\CreatePrintJobPayload;
 use OneStopMobile\PrintNodeSdk\PrintNodeSdk;
+use OneStopMobile\PrintNodeSdk\Values\ChildAccountContext;
 use OneStopMobile\PrintNodeSdk\Values\CreatedPrintJobResult;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -105,8 +106,10 @@ final readonly class PrintManager
             throw new PrintDispatchBlockedException($message);
         }
 
+        $childAccount = $pendingPrint->configuredChildAccount() ?? $resolvedTarget->childAccount;
+
         try {
-            $createdPrintJob = $this->createPrintJob($payload, $idempotencyKey);
+            $createdPrintJob = $this->createPrintJob($payload, $idempotencyKey, $childAccount);
 
             $result = PrintResult::sent(
                 printJobId: $createdPrintJob->printJobId,
@@ -199,10 +202,13 @@ final readonly class PrintManager
         ], JSON_THROW_ON_ERROR));
     }
 
-    private function createPrintJob(CreatePrintJobPayload $payload, ?string $idempotencyKey): CreatedPrintJobResult
-    {
+    private function createPrintJob(
+        CreatePrintJobPayload $payload,
+        ?string $idempotencyKey,
+        ?ChildAccountContext $childAccount,
+    ): CreatedPrintJobResult {
         try {
-            return $this->sdk->printJobs()->createWithMetadata($payload, $idempotencyKey);
+            return $this->sdk->printJobs()->createWithMetadata($payload, $idempotencyKey, $childAccount);
         } catch (UnexpectedValueException $unexpectedValueException) {
             throw new IncompletePrintJobException('The PrintNode API returned a successful response without a recognizable print job identifier.', $unexpectedValueException->getCode(), previous: $unexpectedValueException);
         }

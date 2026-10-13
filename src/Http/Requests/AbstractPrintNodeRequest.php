@@ -27,12 +27,18 @@ abstract class AbstractPrintNodeRequest extends Request
         protected readonly array $extraHeaders = [],
     ) {}
 
+    /**
+     * The child account this request should run in. Null means: whatever the connector defaults to.
+     * The connector turns this into a header while booting the request, see PrintNodeConnector::boot().
+     */
+    public function childAccount(): ?ChildAccountContext
+    {
+        return $this->childAccount;
+    }
+
     protected function defaultHeaders(): array
     {
-        return array_filter([
-            ...($this->childAccount?->toHeaders() ?? []),
-            ...$this->extraHeaders,
-        ], static fn (?string $value): bool => $value !== null);
+        return $this->extraHeaders;
     }
 
     protected function defaultQuery(): array

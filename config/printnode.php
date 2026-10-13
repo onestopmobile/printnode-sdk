@@ -16,8 +16,8 @@ return [
         'value' => env('PRINTNODE_DEFAULT_CHILD_ACCOUNT_LOOKUP_VALUE'),
     ],
     'printing' => [
-        'default_title' => env('PRINTNODE_PRINT_DEFAULT_TITLE', 'Backoffice print job'),
-        'default_source' => env('PRINTNODE_PRINT_DEFAULT_SOURCE', 'One Stop Mobile - Backoffice'),
+        'default_title' => env('PRINTNODE_PRINT_DEFAULT_TITLE', 'Print job'),
+        'default_source' => env('PRINTNODE_PRINT_DEFAULT_SOURCE', 'PrintNode SDK'),
         'default_options' => [],
         'default_idempotency_prefix' => env('PRINTNODE_PRINT_IDEMPOTENCY_KEY_PREFIX'),
         'resolver' => null,

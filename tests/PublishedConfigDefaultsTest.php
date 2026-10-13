@@ -90,8 +90,8 @@ it('uses explicit published config defaults that skip outside production and log
             'by' => null,
             'value' => null,
         ])
-        ->and($config['printing']['default_title'])->toBe('Backoffice print job')
-        ->and($config['printing']['default_source'])->toBe('One Stop Mobile - Backoffice')
+        ->and($config['printing']['default_title'])->toBe('Print job')
+        ->and($config['printing']['default_source'])->toBe('PrintNode SDK')
         ->and($config['printing']['policy'])->toBe([
             'enabled' => true,
             'allowed_environments' => 'production',

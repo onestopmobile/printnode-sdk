@@ -15,6 +15,7 @@ use OneStopMobile\PrintNodeSdk\PrintNodeConfig;
 use OneStopMobile\PrintNodeSdk\PrintNodeSdk;
 use Psr\Log\AbstractLogger;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 it('falls back to defaults when the laravel root config is invalid', function (): void {
     $factory = new LaravelPrintNodeConfigFactory;
@@ -28,8 +29,8 @@ it('falls back to defaults when the laravel root config is invalid', function ()
         ->and($config->baseUrl)->toBe('https://api.printnode.com')
         ->and($config->userAgent)->toBe('onestopmobile-printnode-sdk')
         ->and($config->defaultChildAccount)->toBeNull()
-        ->and($managerConfig->defaultTitle)->toBe('Backoffice print job')
-        ->and($managerConfig->defaultSource)->toBe('One Stop Mobile - Backoffice')
+        ->and($managerConfig->defaultTitle)->toBe('Print job')
+        ->and($managerConfig->defaultSource)->toBe('PrintNode SDK')
         ->and($managerConfig->dispatchPolicy)->toBeInstanceOf(EnvironmentPrintDispatchPolicy::class);
 });
 
@@ -140,33 +141,39 @@ it('can disable both the print guard and logging explicitly', function (): void 
         ->and($managerConfig->logger)->toBeNull();
 });
 
-it('falls back to the default logger when the preferred channel is unavailable', function (): void {
-    $factory = new LaravelPrintNodeConfigFactory;
-    $logger = new class extends AbstractLogger
+/**
+ * Like Laravel's LogManager: an unknown channel is not an error, you silently get an emergency
+ * logger that writes to laravel.log instead.
+ */
+function logManagerWithEmergencyFallback(): AbstractLogger
+{
+    return new class extends AbstractLogger
     {
-        public array $records = [];
+        /**
+         * @var list<string>
+         */
+        public array $requestedChannels = [];
+
+        public function channel(string $name): LoggerInterface
+        {
+            $this->requestedChannels[] = $name;
+
+            return new NullLogger;
+        }
 
         /**
          * @param  array<string, mixed>  $context
          */
-        public function log($level, $message, array $context = []): void
-        {
-            $this->records[] = [
-                'level' => (string) $level,
-                'message' => (string) $message,
-                'context' => $context,
-            ];
-        }
-
-        public function channel(string $name): LoggerInterface
-        {
-            throw new RuntimeException('Unknown log channel: '.$name);
-        }
+        public function log($level, string|Stringable $message, array $context = []): void {}
     };
-    $app = new Container;
-    $app->instance('log', $logger);
+}
 
-    $managerConfig = $factory->makePrintManagerConfig(fakeConfigRepository([
+it('uses the app default logger when the channel is not defined in the app', function (): void {
+    $logManager = logManagerWithEmergencyFallback();
+    $app = new Container;
+    $app->instance('log', $logManager);
+
+    $managerConfig = (new LaravelPrintNodeConfigFactory)->makePrintManagerConfig(fakeConfigRepository([
         'printnode' => [
             'printing' => [
                 'logging' => [
@@ -177,7 +184,70 @@ it('falls back to the default logger when the preferred channel is unavailable',
         ],
     ]), $app);
 
-    expect($managerConfig->logger)->toBe($logger);
+    expect($managerConfig->logger)->toBe($logManager)
+        ->and($logManager->requestedChannels)->toBe([]);
+});
+
+it('uses the configured channel when the app defines it', function (): void {
+    $logManager = logManagerWithEmergencyFallback();
+    $app = new Container;
+    $app->instance('log', $logManager);
+
+    $managerConfig = (new LaravelPrintNodeConfigFactory)->makePrintManagerConfig(fakeConfigRepository([
+        'printnode' => [
+            'printing' => [
+                'logging' => [
+                    'enabled' => true,
+                    'channel' => 'print-node',
+                ],
+            ],
+        ],
+        'logging.channels.print-node' => [
+            'driver' => 'daily',
+        ],
+    ]), $app);
+
+    expect($managerConfig->logger)->toBeInstanceOf(NullLogger::class)
+        ->and($logManager->requestedChannels)->toBe(['print-node']);
+});
+
+it('logs nothing when logging is disabled, even with a channel set', function (): void {
+    $app = new Container;
+    $app->instance('log', logManagerWithEmergencyFallback());
+
+    $managerConfig = (new LaravelPrintNodeConfigFactory)->makePrintManagerConfig(fakeConfigRepository([
+        'printnode' => [
+            'printing' => [
+                'logging' => [
+                    'enabled' => false,
+                    'channel' => 'print-node',
+                ],
+            ],
+        ],
+    ]), $app);
+
+    expect($managerConfig->logger)->toBeNull();
+});
+
+it('logs nothing when the log binding is not a logger', function (): void {
+    $app = new Container;
+    $app->instance('log', new stdClass);
+
+    $managerConfig = (new LaravelPrintNodeConfigFactory)->makePrintManagerConfig(fakeConfigRepository([
+        'printnode' => [
+            'printing' => [
+                'logging' => [
+                    'enabled' => true,
+                    'channel' => 'print-node',
+                ],
+            ],
+        ],
+        'logging.channels.print-node' => [
+            'driver' => 'daily',
+        ],
+    ]), $app);
+
+    expect($managerConfig->logger)->toBeNull();
 });
 
 it('throws when the laravel config binding is not a config repository', function (): void {

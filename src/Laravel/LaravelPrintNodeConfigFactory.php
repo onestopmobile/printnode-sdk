@@ -13,7 +13,6 @@ use OneStopMobile\PrintNodeSdk\Printing\PrintManagerConfig;
 use OneStopMobile\PrintNodeSdk\PrintNodeConfig;
 use OneStopMobile\PrintNodeSdk\Values\ChildAccountContext;
 use Psr\Log\LoggerInterface;
-use Throwable;
 
 final class LaravelPrintNodeConfigFactory
 {
@@ -43,12 +42,12 @@ final class LaravelPrintNodeConfigFactory
 
         return new PrintManagerConfig(
             targetResolver: $this->resolver($app, $printing),
-            defaultTitle: $this->stringValue($printing, 'default_title', 'Backoffice print job'),
-            defaultSource: $this->stringValue($printing, 'default_source', 'One Stop Mobile - Backoffice'),
+            defaultTitle: $this->stringValue($printing, 'default_title', 'Print job'),
+            defaultSource: $this->stringValue($printing, 'default_source', 'PrintNode SDK'),
             defaultOptions: $this->arrayValue($printing, 'default_options'),
             defaultIdempotencyPrefix: $this->nullableStringValue($printing, 'default_idempotency_prefix'),
             dispatchPolicy: $this->dispatchPolicy($app, $printing),
-            logger: $this->logger($app, $logging),
+            logger: $this->logger($repository, $app, $logging),
             logSkipped: $this->boolValue($logging, 'log_skipped', true),
             logSuccess: $this->boolValue($logging, 'log_success', false),
             logFailures: $this->boolValue($logging, 'log_failures', true),
@@ -241,44 +240,35 @@ final class LaravelPrintNodeConfigFactory
     }
 
     /**
+     * The channel from the config when the app defines it, otherwise the app's default logger.
+     *
      * @param  array<string, mixed>  $logging
      */
-    private function logger(Container $app, array $logging): ?LoggerInterface
+    private function logger(ConfigRepository $repository, Container $app, array $logging): ?LoggerInterface
     {
-        $enabled = $this->boolValue($logging, 'enabled', true);
+        if (! $this->boolValue($logging, 'enabled', true) || ! $app->bound('log')) {
+            return null;
+        }
+
+        $logManager = $app->make('log');
         $channel = $this->nullableStringValue($logging, 'channel');
 
+        // Laravel's LogManager does not throw for a channel it does not know. It quietly switches to
+        // an emergency logger that writes to laravel.log, so check that the app defines the channel.
         if (
-            ! $enabled
-            && $channel === null
+            $channel !== null
+            && is_array($repository->get('logging.channels.'.$channel))
+            && is_object($logManager)
+            && method_exists($logManager, 'channel')
         ) {
-            return null;
-        }
+            $channelLogger = $logManager->channel($channel);
 
-        if (! $app->bound('log')) {
-            return null;
-        }
-
-        $logger = $app->make('log');
-        $preferredChannel = $channel;
-
-        if ($preferredChannel === null) {
-            $preferredChannel = 'print-node';
-        }
-
-        if (is_object($logger) && method_exists($logger, 'channel')) {
-            try {
-                $resolvedLogger = $logger->channel($preferredChannel);
-
-                if ($resolvedLogger instanceof LoggerInterface) {
-                    $logger = $resolvedLogger;
-                }
-            } catch (Throwable) {
-                // Fall back to the app logger when the preferred channel is not configured.
+            if ($channelLogger instanceof LoggerInterface) {
+                return $channelLogger;
             }
         }
 
-        return $logger instanceof LoggerInterface ? $logger : null;
+        return $logManager instanceof LoggerInterface ? $logManager : null;
     }
 
     /**

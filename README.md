@@ -49,8 +49,8 @@ PRINTNODE_HTTP_RETRY_INTERVAL_SECONDS=0
 PRINTNODE_HTTP_USE_EXPONENTIAL_BACKOFF=false
 PRINTNODE_DEFAULT_CHILD_ACCOUNT_LOOKUP_FIELD=
 PRINTNODE_DEFAULT_CHILD_ACCOUNT_LOOKUP_VALUE=
-PRINTNODE_PRINT_DEFAULT_TITLE="Backoffice print job"
-PRINTNODE_PRINT_DEFAULT_SOURCE="One Stop Mobile - Backoffice"
+PRINTNODE_PRINT_DEFAULT_TITLE="Print job"
+PRINTNODE_PRINT_DEFAULT_SOURCE="PrintNode SDK"
 PRINTNODE_PRINT_IDEMPOTENCY_KEY_PREFIX=
 PRINTNODE_PRINT_GUARD_ENABLED=true
 PRINTNODE_PRINT_ALLOWED_ENVIRONMENTS=production
@@ -243,7 +243,7 @@ The Laravel integration can optionally protect physical printers outside selecte
 
 The published config defaults are intentionally safe:
 
-- In `local` and `develop`, print jobs are skipped before they reach PrintNode and a skipped-job log entry is written.
+- Outside `production` (for example `local` or `staging`), print jobs are skipped before they reach PrintNode and a skipped-job log entry is written. To print from a test server, add its environment to `PRINTNODE_PRINT_ALLOWED_ENVIRONMENTS`.
 - In `production`, the same defaults allow jobs to be sent to PrintNode.
 - The default preferred log channel is `print-node`. If that channel is not configured in Laravel, the package falls back to the app logger.
 

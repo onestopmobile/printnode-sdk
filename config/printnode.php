@@ -9,7 +9,7 @@ return [
     'connect_timeout' => (float) env('PRINTNODE_HTTP_CONNECT_TIMEOUT_SECONDS', 10),
     'request_timeout' => (float) env('PRINTNODE_HTTP_REQUEST_TIMEOUT_SECONDS', 30),
     'tries' => (int) env('PRINTNODE_HTTP_RETRY_ATTEMPTS', 1),
-    'retry_interval' => (int) env('PRINTNODE_HTTP_RETRY_INTERVAL_SECONDS', 0),
+    'retry_interval' => (float) env('PRINTNODE_HTTP_RETRY_INTERVAL_SECONDS', 0),
     'use_exponential_backoff' => env('PRINTNODE_HTTP_USE_EXPONENTIAL_BACKOFF', false),
     'default_child_account' => [
         'by' => env('PRINTNODE_DEFAULT_CHILD_ACCOUNT_LOOKUP_FIELD'),

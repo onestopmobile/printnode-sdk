@@ -6,6 +6,7 @@ namespace OneStopMobile\PrintNodeSdk\Resources;
 
 use OneStopMobile\PrintNodeSdk\Data\PrintJobData;
 use OneStopMobile\PrintNodeSdk\Data\PrintJobStateData;
+use OneStopMobile\PrintNodeSdk\Http\Requests\AbstractPrintNodeRequest;
 use OneStopMobile\PrintNodeSdk\Http\Requests\EndpointRequest;
 use OneStopMobile\PrintNodeSdk\Http\Requests\JsonEndpointRequest;
 use OneStopMobile\PrintNodeSdk\Http\Responses\PrintNodeResponse;
@@ -178,7 +179,7 @@ final readonly class PrintJobsResource extends AbstractResource
             $payload->toArray(),
             $childAccount,
             extraHeaders: array_filter([
-                'X-Idempotency-Key' => $this->idempotencyKeyHeader($idempotencyKey),
+                AbstractPrintNodeRequest::IDEMPOTENCY_KEY_HEADER => $this->idempotencyKeyHeader($idempotencyKey),
             ], static fn (?string $value): bool => $value !== null),
         );
     }

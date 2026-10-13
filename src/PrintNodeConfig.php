@@ -8,6 +8,11 @@ use OneStopMobile\PrintNodeSdk\Values\ChildAccountContext;
 
 final readonly class PrintNodeConfig
 {
+    /**
+     * @param  int  $tries  How many attempts a request gets. Only reads and print jobs with an
+     *                      idempotency key are ever repeated (see PrintNodeConnector::handleRetry()).
+     * @param  int  $retryInterval  Milliseconds to wait between attempts.
+     */
     public function __construct(
         public string $apiKey,
         public string $baseUrl = 'https://api.printnode.com',

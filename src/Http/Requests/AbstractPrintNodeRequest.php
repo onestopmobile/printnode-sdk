@@ -12,6 +12,8 @@ use Saloon\Http\Response;
 
 abstract class AbstractPrintNodeRequest extends Request
 {
+    public const string IDEMPOTENCY_KEY_HEADER = 'X-Idempotency-Key';
+
     #[Override]
     protected ?string $response = PrintNodeResponse::class;
 

@@ -28,7 +28,8 @@ final class LaravelPrintNodeConfigFactory
             connectTimeout: $this->floatValue($config, 'connect_timeout', 10),
             requestTimeout: $this->floatValue($config, 'request_timeout', 30),
             tries: $this->intValue($config, 'tries', 1),
-            retryInterval: $this->intValue($config, 'retry_interval', 0),
+            // The config is in seconds (PRINTNODE_HTTP_RETRY_INTERVAL_SECONDS); Saloon waits in milliseconds.
+            retryInterval: (int) round($this->floatValue($config, 'retry_interval', 0) * 1000),
             useExponentialBackoff: $this->boolValue($config, 'use_exponential_backoff', false),
             defaultChildAccount: $this->childAccountContext($config),
         );

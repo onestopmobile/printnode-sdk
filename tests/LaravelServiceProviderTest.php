@@ -143,6 +143,9 @@ it('supports environment-aware policy and laravel log channels', function (): vo
                 ],
             ],
         ],
+        'logging.channels.printnode' => [
+            'driver' => 'single',
+        ],
     ], environment: 'local', logger: $logger);
 
     $provider = new PrintNodeServiceProvider($app);
@@ -161,6 +164,7 @@ it('supports environment-aware policy and laravel log channels', function (): vo
         ->zpl('^XA^FO50,50^FDlocal^FS^XZ', title: 'Local label');
 
     expect($result->wasSkipped())->toBeTrue()
+        ->and($app->make('log')->requestedChannels)->toBe(['printnode'])
         ->and($logger->records)->toHaveCount(1)
         ->and($logger->records[0]['context'])->toMatchArray([
             'printerId' => 123,
@@ -236,7 +240,7 @@ it('skips and logs print jobs by default outside production', function (): void 
         ->zpl('^XA^XZ', title: 'Local default print');
 
     expect($result->wasSkipped())->toBeTrue()
-        ->and($result->source)->toBe('One Stop Mobile - Backoffice')
+        ->and($result->source)->toBe('PrintNode SDK')
         ->and($logger->records)->toHaveCount(1)
         ->and($logger->records[0]['level'])->toBe('info')
         ->and($logger->records[0]['context'])->toMatchArray([
@@ -267,6 +271,6 @@ it('sends print jobs by default in production', function (): void {
 
     expect($result->wasSent())->toBeTrue()
         ->and($result->printJobId)->toBe(3004)
-        ->and($result->source)->toBe('One Stop Mobile - Backoffice')
+        ->and($result->source)->toBe('PrintNode SDK')
         ->and($logger->records)->toHaveCount(0);
 });

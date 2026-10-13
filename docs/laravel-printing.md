@@ -161,13 +161,13 @@ The package config supports these high-level printing defaults:
     'default_idempotency_prefix' => null,
     'resolver' => null,
     'policy' => [
-        'enabled' => false,
-        'allowed_environments' => ['production'],
+        'enabled' => true,
+        'allowed_environments' => 'production',
         'action_outside_allowed_environments' => 'skip',
     ],
     'logging' => [
-        'enabled' => false,
-        'channel' => null,
+        'enabled' => true,
+        'channel' => 'print-node',
         'log_skipped' => true,
         'log_success' => false,
         'log_failures' => true,
@@ -209,13 +209,19 @@ Requests with a key are also the only print jobs the connector retries (see `tri
 
 ## Environment policy
 
-When you want to avoid accidental physical prints in local or staging environments, enable the Laravel policy:
+The guard is on by default, so a local or staging install does not print on real printers by accident. Outside the allowed environments a print returns a skipped `PrintResult` (`wasSkipped()`), without calling the PrintNode API. If a test server should print, add its environment:
+
+```dotenv
+PRINTNODE_PRINT_ALLOWED_ENVIRONMENTS=production,staging
+```
+
+Or in the published config:
 
 ```php
 'printing' => [
     'policy' => [
         'enabled' => true,
-        'allowed_environments' => ['production'],
+        'allowed_environments' => ['production', 'staging'],
         'action_outside_allowed_environments' => 'skip',
     ],
 ],
@@ -229,7 +235,7 @@ Supported actions outside the allowed environments:
 
 ## Logging
 
-The Laravel integration can reuse an existing PSR-3 compatible logger or named Laravel log channel:
+The Laravel integration logs to the channel you name, if your app defines it in `config/logging.php`. Otherwise it uses your app's default logger. It never falls through to Laravel's emergency logger. Set `enabled` to `false` to log nothing at all.
 
 ```php
 'printing' => [

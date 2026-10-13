@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OneStopMobile\PrintNodeSdk\Printing;
 
 use OneStopMobile\PrintNodeSdk\Enums\PrintContentType;
+use OneStopMobile\PrintNodeSdk\Values\ChildAccountContext;
 
 final class PendingPrint
 {
@@ -32,6 +33,8 @@ final class PendingPrint
     private ?string $expireAfter = null;
 
     private ?string $clientKey = null;
+
+    private ?ChildAccountContext $childAccount = null;
 
     private function __construct(
         private readonly PrintManager $manager,
@@ -111,6 +114,16 @@ final class PendingPrint
     public function clientKey(string $clientKey): self
     {
         $this->clientKey = $clientKey;
+
+        return $this;
+    }
+
+    /**
+     * Send the job from this child account. Wins over the child account of a resolved target.
+     */
+    public function childAccount(ChildAccountContext $childAccount): self
+    {
+        $this->childAccount = $childAccount;
 
         return $this;
     }
@@ -206,6 +219,11 @@ final class PendingPrint
     public function configuredClientKey(): ?string
     {
         return $this->clientKey;
+    }
+
+    public function configuredChildAccount(): ?ChildAccountContext
+    {
+        return $this->childAccount;
     }
 
     private function withContent(PrintContentType $contentType, string $content, ?string $title): self

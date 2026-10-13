@@ -6,6 +6,7 @@ namespace OneStopMobile\PrintNodeSdk\Http;
 
 use OneStopMobile\PrintNodeSdk\Http\Requests\AbstractPrintNodeRequest;
 use OneStopMobile\PrintNodeSdk\PrintNodeConfig;
+use OneStopMobile\PrintNodeSdk\Values\ChildAccountContext;
 use Override;
 use Saloon\Contracts\Authenticator;
 use Saloon\Enums\Method;
@@ -13,6 +14,7 @@ use Saloon\Exceptions\Request\FatalRequestException;
 use Saloon\Exceptions\Request\RequestException;
 use Saloon\Http\Auth\BasicAuthenticator;
 use Saloon\Http\Connector;
+use Saloon\Http\PendingRequest;
 use Saloon\Http\Request;
 use Saloon\Traits\Plugins\HasTimeout;
 use Saloon\Traits\RequestProperties\HasTries;
@@ -43,6 +45,31 @@ final class PrintNodeConnector extends Connector
     public function resolveBaseUrl(): string
     {
         return rtrim($this->printNodeConfig->baseUrl, '/');
+    }
+
+    /**
+     * A request runs in exactly one account. Saloon merges connector and request headers by name,
+     * so a request for one child account (say by creator ref) would otherwise also carry the
+     * connector's default (say by email), and PrintNode would have to pick one. When the request
+     * names an account, that choice replaces the default; parentAccount() removes it entirely.
+     */
+    #[Override]
+    public function boot(PendingRequest $pendingRequest): void
+    {
+        $request = $pendingRequest->getRequest();
+        $childAccount = $request instanceof AbstractPrintNodeRequest ? $request->childAccount() : null;
+
+        if (! $childAccount instanceof ChildAccountContext) {
+            return;
+        }
+
+        $headers = $pendingRequest->headers();
+
+        foreach (ChildAccountContext::HEADER_NAMES as $headerName) {
+            $headers->remove($headerName);
+        }
+
+        $headers->merge($childAccount->toHeaders());
     }
 
     /**

@@ -30,7 +30,9 @@ final class PendingPrint
 
     private ?string $contentTypeHeader = null;
 
-    private ?string $expireAfter = null;
+    private ?int $expireAfter = null;
+
+    private ?int $qty = null;
 
     private ?string $clientKey = null;
 
@@ -104,9 +106,23 @@ final class PendingPrint
         return $this;
     }
 
-    public function expireAfter(string $expireAfter): self
+    /**
+     * Drop the job if it could not be printed within this many seconds. Useful for receipts: one that
+     * prints hours later, when the printer's computer comes back online, only confuses people.
+     */
+    public function expireAfter(int $seconds): self
     {
-        $this->expireAfter = $expireAfter;
+        $this->expireAfter = $seconds;
+
+        return $this;
+    }
+
+    /**
+     * Print the job this many times. Unlike the 'copies' option, this also works for raw jobs.
+     */
+    public function qty(int $qty): self
+    {
+        $this->qty = $qty;
 
         return $this;
     }
@@ -211,9 +227,14 @@ final class PendingPrint
         return $this->contentTypeHeader;
     }
 
-    public function configuredExpireAfter(): ?string
+    public function configuredExpireAfter(): ?int
     {
         return $this->expireAfter;
+    }
+
+    public function configuredQty(): ?int
+    {
+        return $this->qty;
     }
 
     public function configuredClientKey(): ?string

@@ -173,7 +173,7 @@ it('covers additional collection and deletion resource endpoints', function (): 
     $sdk->connector()->withMockClient($mockClient);
 
     $computers = $sdk->computers()->get([575407, 609529]);
-    $deletedAllComputers = $sdk->computers()->delete();
+    $deletedAllComputers = $sdk->computers()->deleteAll();
     $deletedSelectedComputers = $sdk->computers()->delete([575407]);
     $downloads = $sdk->downloads()->all();
     $selectedDownloads = $sdk->downloads()->get([18, 19]);
@@ -247,7 +247,7 @@ it('covers additional print job resource methods', function (): void {
 
     $allJobs = $sdk->printJobs()->all(new Pagination(limit: 1, after: 5));
     $selectedJobs = $sdk->printJobs()->get([10, 11]);
-    $deletedAllJobs = $sdk->printJobs()->delete();
+    $deletedAllJobs = $sdk->printJobs()->deleteAll();
     $deletedSelectedJobs = $sdk->printJobs()->delete([12, 13]);
     $states = $sdk->printJobs()->states([10, 11], new Pagination(limit: 2));
     $deletedByPrinters = $sdk->printJobs()->deleteByPrinters([5, 6], [12, 13]);

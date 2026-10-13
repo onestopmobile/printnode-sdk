@@ -81,9 +81,9 @@ PRINTNODE_PRINT_LOG_INCLUDE_CONTENT_LENGTH=true
 | API area | SDK entry point | Public methods |
 | --- | --- | --- |
 | `whoami` | `whoAmI()`, `whoAmIResource()` | `get()` |
-| `computers` | `computers()` | `all()`, `get()`, `delete()` |
+| `computers` | `computers()` | `all()`, `get()`, `delete()`, `deleteAll()` |
 | `printers` | `printers()` | `all()` |
-| `printjobs` | `printJobs()` | `all()`, `get()`, `create()`, `delete()`, `states()`, `byPrinters()`, `deleteByPrinters()` |
+| `printjobs` | `printJobs()` | `all()`, `get()`, `create()`, `delete()`, `deleteAll()`, `states()`, `byPrinters()`, `deleteByPrinters()`, `deleteAllByPrinters()` |
 | `downloads` | `downloads()` | `all()`, `get()`, `latest()`, `update()` |
 | `scales` | `scales()` | `listConnected()`, `all()`, `byDeviceName()`, `get()`, `test()` |
 | `webhooks` | `webhooks()` | `all()`, `create()`, `update()`, `delete()` |

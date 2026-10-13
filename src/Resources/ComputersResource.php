@@ -46,20 +46,32 @@ final readonly class ComputersResource extends AbstractResource
     }
 
     /**
-     * @param  int|array<int>|CommaSeparatedIdSet|string|null  $computerSet
+     * @param  int|array<int>|CommaSeparatedIdSet|string  $computerSet
      * @return list<int|string>
      */
-    public function delete(int|array|CommaSeparatedIdSet|string|null $computerSet = null, ?ChildAccountContext $childAccount = null): array
+    public function delete(int|array|CommaSeparatedIdSet|string $computerSet, ?ChildAccountContext $childAccount = null): array
     {
-        $endpoint = '/computers';
+        return $this->deleteAt('/computers/'.CommaSeparatedIdSet::from($computerSet), $childAccount);
+    }
 
-        if ($computerSet !== null) {
-            $endpoint .= '/'.CommaSeparatedIdSet::from($computerSet);
-        }
+    /**
+     * Deletes every computer of the account. A separate method, so a missing id can never do this.
+     *
+     * @return list<int|string>
+     */
+    public function deleteAll(?ChildAccountContext $childAccount = null): array
+    {
+        return $this->deleteAt('/computers', $childAccount);
+    }
 
+    /**
+     * @return list<int|string>
+     */
+    private function deleteAt(string $endpoint, ?ChildAccountContext $childAccount): array
+    {
         return $this->identifierListResponse(
             $this->send(new EndpointRequest(Method::DELETE, $endpoint, $childAccount)),
-            'DELETE /computers',
+            'DELETE '.$endpoint,
         );
     }
 }

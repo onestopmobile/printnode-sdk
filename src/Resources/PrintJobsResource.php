@@ -90,21 +90,22 @@ final readonly class PrintJobsResource extends AbstractResource
     }
 
     /**
-     * @param  int|array<int>|CommaSeparatedIdSet|string|null  $printJobSet
+     * @param  int|array<int>|CommaSeparatedIdSet|string  $printJobSet
      * @return list<int|string>
      */
-    public function delete(int|array|CommaSeparatedIdSet|string|null $printJobSet = null, ?ChildAccountContext $childAccount = null): array
+    public function delete(int|array|CommaSeparatedIdSet|string $printJobSet, ?ChildAccountContext $childAccount = null): array
     {
-        $endpoint = '/printjobs';
+        return $this->deleteAt('/printjobs/'.CommaSeparatedIdSet::from($printJobSet), $childAccount);
+    }
 
-        if ($printJobSet !== null) {
-            $endpoint .= '/'.CommaSeparatedIdSet::from($printJobSet);
-        }
-
-        return $this->identifierListResponse(
-            $this->send(new EndpointRequest(Method::DELETE, $endpoint, $childAccount)),
-            'DELETE /printjobs',
-        );
+    /**
+     * Deletes every pending print job of the account. A separate method, so a missing id can never do this.
+     *
+     * @return list<int|string>
+     */
+    public function deleteAll(?ChildAccountContext $childAccount = null): array
+    {
+        return $this->deleteAt('/printjobs', $childAccount);
     }
 
     /**
@@ -161,23 +162,41 @@ final readonly class PrintJobsResource extends AbstractResource
 
     /**
      * @param  int|array<int>|CommaSeparatedIdSet|string  $printerSet
-     * @param  int|array<int>|CommaSeparatedIdSet|string|null  $printJobSet
+     * @param  int|array<int>|CommaSeparatedIdSet|string  $printJobSet
      * @return list<int|string>
      */
     public function deleteByPrinters(
         int|array|CommaSeparatedIdSet|string $printerSet,
-        int|array|CommaSeparatedIdSet|string|null $printJobSet = null,
+        int|array|CommaSeparatedIdSet|string $printJobSet,
         ?ChildAccountContext $childAccount = null,
     ): array {
-        $endpoint = '/printers/'.CommaSeparatedIdSet::from($printerSet).'/printjobs';
+        return $this->deleteAt(
+            '/printers/'.CommaSeparatedIdSet::from($printerSet).'/printjobs/'.CommaSeparatedIdSet::from($printJobSet),
+            $childAccount,
+        );
+    }
 
-        if ($printJobSet !== null) {
-            $endpoint .= '/'.CommaSeparatedIdSet::from($printJobSet);
-        }
+    /**
+     * Deletes every pending print job on these printers.
+     *
+     * @param  int|array<int>|CommaSeparatedIdSet|string  $printerSet
+     * @return list<int|string>
+     */
+    public function deleteAllByPrinters(
+        int|array|CommaSeparatedIdSet|string $printerSet,
+        ?ChildAccountContext $childAccount = null,
+    ): array {
+        return $this->deleteAt('/printers/'.CommaSeparatedIdSet::from($printerSet).'/printjobs', $childAccount);
+    }
 
+    /**
+     * @return list<int|string>
+     */
+    private function deleteAt(string $endpoint, ?ChildAccountContext $childAccount): array
+    {
         return $this->identifierListResponse(
             $this->send(new EndpointRequest(Method::DELETE, $endpoint, $childAccount)),
-            'DELETE /printers/.../printjobs',
+            'DELETE '.$endpoint,
         );
     }
 

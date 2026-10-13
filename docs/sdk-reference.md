@@ -49,7 +49,9 @@ Methods that accept a set of ids support all of these forms:
 - a comma-separated `string` like `'12,13,14'`
 - `CommaSeparatedIdSet::from(...)`
 
-Empty sets throw `InvalidIdentifierSetException`.
+Empty sets throw `InvalidIdentifierSetException`, and so does a set with any part that is not a positive whole number (`'12,abc'`, `'1.9'`, `'-5'`). The whole set is rejected instead of the bad part being skipped, because these sets also go into DELETE requests.
+
+Deleting everything is never the default: `delete()` needs ids, and `deleteAll()` / `deleteAllByPrinters()` say what they do in their name.
 
 ### Pagination
 
@@ -111,7 +113,8 @@ Entry point: `PrintNodeSdk::computers(): ComputersResource`
 | --- | --- | --- | --- |
 | `all(?Pagination $pagination = null, ?ChildAccountContext $childAccount = null)` | `GET /computers` | `list<ComputerData>` | Supports `limit`, `after`, and `dir` through `Pagination`. |
 | `get(int|array|CommaSeparatedIdSet|string $computerSet, ?ChildAccountContext $childAccount = null)` | `GET /computers/{computerSet}` | `list<ComputerData>` | Fetch one or many computers by id. |
-| `delete(int|array|CommaSeparatedIdSet|string|null $computerSet = null, ?ChildAccountContext $childAccount = null)` | `DELETE /computers` or `DELETE /computers/{computerSet}` | `list<int|string>` | Returns the identifiers confirmed by the API. |
+| `delete(int|array|CommaSeparatedIdSet|string $computerSet, ?ChildAccountContext $childAccount = null)` | `DELETE /computers/{computerSet}` | `list<int|string>` | Returns the identifiers confirmed by the API. The ids are required. |
+| `deleteAll(?ChildAccountContext $childAccount = null)` | `DELETE /computers` | `list<int|string>` | Deletes every computer of the account. |
 
 ## `printers`
 
@@ -130,10 +133,12 @@ Entry point: `PrintNodeSdk::printJobs(): PrintJobsResource`
 | `all(?Pagination $pagination = null, ?ChildAccountContext $childAccount = null)` | `GET /printjobs` | `list<PrintJobData>` | Supports `Pagination`. |
 | `get(int|array|CommaSeparatedIdSet|string $printJobSet, ?ChildAccountContext $childAccount = null)` | `GET /printjobs/{printJobSet}` | `list<PrintJobData>` | Fetch one or many jobs by id. |
 | `create(CreatePrintJobPayload $payload, ?string $idempotencyKey = null, ?ChildAccountContext $childAccount = null)` | `POST /printjobs` | `int|string` | Optional idempotency key is sent as `X-Idempotency-Key`. A key PrintNode already accepted in the last 24 hours throws `DuplicatePrintJobException`. |
-| `delete(int|array|CommaSeparatedIdSet|string|null $printJobSet = null, ?ChildAccountContext $childAccount = null)` | `DELETE /printjobs` or `DELETE /printjobs/{printJobSet}` | `list<int|string>` | Returns the identifiers confirmed by the API. |
+| `delete(int|array|CommaSeparatedIdSet|string $printJobSet, ?ChildAccountContext $childAccount = null)` | `DELETE /printjobs/{printJobSet}` | `list<int|string>` | Returns the identifiers confirmed by the API. The ids are required. |
+| `deleteAll(?ChildAccountContext $childAccount = null)` | `DELETE /printjobs` | `list<int|string>` | Deletes every pending print job of the account. |
 | `states(int|array|CommaSeparatedIdSet|string|null $printJobSet = null, ?Pagination $pagination = null, ?ChildAccountContext $childAccount = null)` | `GET /printjobs/states` or `GET /printjobs/{printJobSet}/states` | `list<list<PrintJobStateData>>` | Returns one state-history list per print job. |
 | `byPrinters(int|array|CommaSeparatedIdSet|string $printerSet, int|array|CommaSeparatedIdSet|string|null $printJobSet = null, ?ChildAccountContext $childAccount = null)` | `GET /printers/{printerSet}/printjobs` or `GET /printers/{printerSet}/printjobs/{printJobSet}` | `list<PrintJobData>` | Filters jobs by printer first, then optionally by print job id. |
-| `deleteByPrinters(int|array|CommaSeparatedIdSet|string $printerSet, int|array|CommaSeparatedIdSet|string|null $printJobSet = null, ?ChildAccountContext $childAccount = null)` | `DELETE /printers/{printerSet}/printjobs` or `DELETE /printers/{printerSet}/printjobs/{printJobSet}` | `list<int|string>` | Deletes jobs scoped by printer. |
+| `deleteByPrinters(int|array|CommaSeparatedIdSet|string $printerSet, int|array|CommaSeparatedIdSet|string $printJobSet, ?ChildAccountContext $childAccount = null)` | `DELETE /printers/{printerSet}/printjobs/{printJobSet}` | `list<int|string>` | Deletes the given jobs on the given printers. |
+| `deleteAllByPrinters(int|array|CommaSeparatedIdSet|string $printerSet, ?ChildAccountContext $childAccount = null)` | `DELETE /printers/{printerSet}/printjobs` | `list<int|string>` | Deletes every pending job on the given printers. |
 
 Create example:
 
@@ -205,7 +210,7 @@ Entry point: `PrintNodeSdk::account(): AccountResource`
 | --- | --- | --- | --- |
 | `create(CreateChildAccountPayload $payload)` | `POST /account` | `CreatedChildAccountData` | Creates a child account under the authenticated account. This method does not accept `ChildAccountContext`. |
 | `update(UpdateChildAccountPayload $payload, ?ChildAccountContext $childAccount = null)` | `PATCH /account` | `AccountData` | Use `ChildAccountContext` when updating a specific child account. |
-| `delete(?ChildAccountContext $childAccount = null)` | `DELETE /account` | `void` | Deletes the current account context. |
+| `delete(ChildAccountContext $childAccount)` | `DELETE /account` | `void` | Deletes the given child account. Passing `ChildAccountContext::parentAccount()` throws, so the integrator account is never deleted by accident. |
 | `controllable(?ChildAccountContext $childAccount = null)` | `GET /account/controllable` | `list<AccountData>` | Lists child accounts the current account can control. |
 | `getState(?ChildAccountContext $childAccount = null)` | `GET /account/state` | `string` | Reads the current account state. |
 | `setState(AccountState|string $state, ?ChildAccountContext $childAccount = null)` | `PUT /account/state` | `void` | Accepts either the enum or a raw API state string. |

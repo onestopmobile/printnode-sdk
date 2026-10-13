@@ -35,6 +35,7 @@ it('dispatches a print job directly to a printer id', function (): void {
         defaultIdempotencyPrefix: 'prints',
     )->printer(42)
         ->option('duplex', 'long-edge')
+        ->idempotencyKey('packing-slip-1001')
         ->pdfUrl('https://example.com/packing-slip.pdf');
 
     expect($result->printJobId)->toBe(987)
@@ -42,7 +43,7 @@ it('dispatches a print job directly to a printer id', function (): void {
         ->and($result->title)->toBe('Fallback title')
         ->and($result->source)->toBe('App Printer')
         ->and($result->requestId)->toBe('req-print-1')
-        ->and($result->idempotencyKey)->toStartWith('prints-')
+        ->and($result->idempotencyKey)->toBe('prints-packing-slip-1001')
         ->and($result->wasSent())->toBeTrue()
         ->and($result->options)->toBe([
             'copies' => 2,
@@ -54,7 +55,7 @@ it('dispatches a print job directly to a printer id', function (): void {
         $headers = $pendingRequest->headers()->all();
 
         return $pendingRequest->getUrl() === 'https://api.printnode.test/printjobs'
-            && isset($headers['X-Idempotency-Key'])
+            && $headers['X-Idempotency-Key'] === 'prints-packing-slip-1001'
             && json_decode((string) $pendingRequest->body(), true, 512, JSON_THROW_ON_ERROR) === [
                 'printerId' => 42,
                 'title' => 'Fallback title',

@@ -6,6 +6,8 @@ namespace OneStopMobile\PrintNodeSdk\Resources;
 
 use OneStopMobile\PrintNodeSdk\Data\PrintJobData;
 use OneStopMobile\PrintNodeSdk\Data\PrintJobStateData;
+use OneStopMobile\PrintNodeSdk\Exceptions\ConflictException;
+use OneStopMobile\PrintNodeSdk\Exceptions\DuplicatePrintJobException;
 use OneStopMobile\PrintNodeSdk\Http\Requests\AbstractPrintNodeRequest;
 use OneStopMobile\PrintNodeSdk\Http\Requests\EndpointRequest;
 use OneStopMobile\PrintNodeSdk\Http\Requests\JsonEndpointRequest;
@@ -61,17 +63,28 @@ final readonly class PrintJobsResource extends AbstractResource
 
     /**
      * @internal Exposes request metadata for higher-level workflows like PrintManager.
+     *
+     * @throws DuplicatePrintJobException when PrintNode already accepted a job with this idempotency key
      */
     public function createWithMetadata(
         CreatePrintJobPayload $payload,
         ?string $idempotencyKey = null,
         ?ChildAccountContext $childAccount = null,
     ): CreatedPrintJobResult {
+        $idempotencyKey = $this->idempotencyKeyHeader($idempotencyKey);
+
         /** @var PrintNodeResponse $response */
         $response = $this->connector->send($this->createRequest($payload, $idempotencyKey, $childAccount));
 
+        try {
+            $printJob = $response->dtoOrThrow();
+        } catch (ConflictException $conflictException) {
+            // PrintNode answers 409 when this idempotency key was already used for a job it accepted.
+            throw $idempotencyKey === null ? $conflictException : new DuplicatePrintJobException($idempotencyKey, $conflictException);
+        }
+
         return new CreatedPrintJobResult(
-            printJobId: $this->printJobIdResponse($response->dtoOrThrow()),
+            printJobId: $this->printJobIdResponse($printJob),
             requestId: $response->requestId(),
         );
     }
@@ -179,7 +192,7 @@ final readonly class PrintJobsResource extends AbstractResource
             $payload->toArray(),
             $childAccount,
             extraHeaders: array_filter([
-                AbstractPrintNodeRequest::IDEMPOTENCY_KEY_HEADER => $this->idempotencyKeyHeader($idempotencyKey),
+                AbstractPrintNodeRequest::IDEMPOTENCY_KEY_HEADER => $idempotencyKey,
             ], static fn (?string $value): bool => $value !== null),
         );
     }

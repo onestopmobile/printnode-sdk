@@ -283,7 +283,7 @@ Failed API responses are mapped to SDK exceptions:
 - `AuthorizationException`
 - `ValidationException`
 - `ResourceNotFoundException`
-- `ConflictException`
+- `ConflictException`, and its subclass `DuplicatePrintJobException` when an idempotency key was already used
 - `RateLimitException`
 - `ApiErrorException`
 - `PrintDispatchBlockedException`

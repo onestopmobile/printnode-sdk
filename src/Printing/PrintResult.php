@@ -35,6 +35,16 @@ final readonly class PrintResult
     }
 
     /**
+     * PrintNode already had this job from an earlier attempt with the same idempotency key, for
+     * example a queued job that is being retried. The print is not lost, it was just not repeated.
+     * PrintNode does not return the earlier job's id, so printJobId is null.
+     */
+    public function wasAlreadySent(): bool
+    {
+        return $this->status === PrintDispatchStatus::AlreadySent;
+    }
+
+    /**
      * @param  array<string, mixed>  $options
      */
     public static function skipped(
@@ -51,10 +61,34 @@ final readonly class PrintResult
             title: $title,
             contentType: $contentType,
             source: $source,
-            requestId: null,
             idempotencyKey: $idempotencyKey,
             options: $options,
             status: PrintDispatchStatus::Skipped,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    public static function alreadySent(
+        int $printNodePrinterId,
+        string $title,
+        PrintContentType $contentType,
+        string $idempotencyKey,
+        ?string $source = null,
+        ?string $requestId = null,
+        array $options = [],
+    ): self {
+        return new self(
+            printJobId: null,
+            printNodePrinterId: $printNodePrinterId,
+            title: $title,
+            contentType: $contentType,
+            source: $source,
+            requestId: $requestId,
+            idempotencyKey: $idempotencyKey,
+            options: $options,
+            status: PrintDispatchStatus::AlreadySent,
         );
     }
 

@@ -8,6 +8,7 @@ use OneStopMobile\PrintNodeSdk\Contracts\DecidesPrintDispatch;
 use OneStopMobile\PrintNodeSdk\Contracts\ResolvesPrintTarget;
 use OneStopMobile\PrintNodeSdk\Enums\PrintContentType;
 use OneStopMobile\PrintNodeSdk\Enums\PrintDispatchAction;
+use OneStopMobile\PrintNodeSdk\Exceptions\DuplicatePrintJobException;
 use OneStopMobile\PrintNodeSdk\Exceptions\IncompletePrintJobException;
 use OneStopMobile\PrintNodeSdk\Exceptions\PrintDispatchBlockedException;
 use OneStopMobile\PrintNodeSdk\Exceptions\UnresolvablePrintTargetException;
@@ -75,7 +76,7 @@ final readonly class PrintManager
             options: $options,
         );
 
-        $idempotencyKey = $pendingPrint->configuredIdempotencyKey() ?? $this->buildIdempotencyKey($resolvedTarget, $payload);
+        $idempotencyKey = $this->idempotencyKey($pendingPrint);
         $dispatchContext = new PrintDispatchContext(
             pendingPrint: $pendingPrint,
             target: $resolvedTarget,
@@ -110,15 +111,16 @@ final readonly class PrintManager
 
         try {
             $createdPrintJob = $this->createPrintJob($payload, $idempotencyKey, $childAccount);
-
-            $result = PrintResult::sent(
-                printJobId: $createdPrintJob->printJobId,
+        } catch (DuplicatePrintJobException $duplicate) {
+            // An earlier attempt with this key already reached PrintNode, for example a queued job
+            // that is being retried. That is the outcome the key is for, not a failure.
+            $result = PrintResult::alreadySent(
                 printNodePrinterId: $resolvedTarget->printNodePrinterId,
                 title: $title,
                 contentType: $contentType,
+                idempotencyKey: $duplicate->idempotencyKey,
                 source: $source,
-                requestId: $createdPrintJob->requestId,
-                idempotencyKey: $idempotencyKey,
+                requestId: $duplicate->requestId,
                 options: $options,
             );
 
@@ -130,6 +132,21 @@ final readonly class PrintManager
 
             throw $throwable;
         }
+
+        $result = PrintResult::sent(
+            printJobId: $createdPrintJob->printJobId,
+            printNodePrinterId: $resolvedTarget->printNodePrinterId,
+            title: $title,
+            contentType: $contentType,
+            source: $source,
+            requestId: $createdPrintJob->requestId,
+            idempotencyKey: $idempotencyKey,
+            options: $options,
+        );
+
+        $this->logSuccessfulDispatch($dispatchContext, $result);
+
+        return $result;
     }
 
     public function defaultTitle(): string
@@ -183,23 +200,25 @@ final readonly class PrintManager
         return $this->targetResolver->resolve($pendingPrint->target());
     }
 
-    private function buildIdempotencyKey(ResolvedPrintTarget $target, CreatePrintJobPayload $payload): ?string
+    /**
+     * Only the caller knows when two prints are "the same print": the same receipt sent again by a
+     * retried queue job is, a reprint or a second drawer kick with identical bytes is not. So a key
+     * is only used when the caller gives one. The configured prefix namespaces it, so two apps that
+     * share a PrintNode account cannot block each other's jobs with a key like "label-1001".
+     */
+    private function idempotencyKey(PendingPrint $pendingPrint): ?string
     {
-        if ($this->defaultIdempotencyPrefix === null || $this->defaultIdempotencyPrefix === '') {
+        $key = $pendingPrint->configuredIdempotencyKey();
+
+        if ($key === null || $key === '') {
             return null;
         }
 
-        return $this->defaultIdempotencyPrefix.'-'.sha1(json_encode([
-            'printerId' => $target->printNodePrinterId,
-            'title' => $payload->title,
-            'contentType' => $payload->contentType->value,
-            'content' => $payload->content,
-            'source' => $payload->source,
-            'contentTypeHeader' => $payload->contentTypeHeader,
-            'expireAfter' => $payload->expireAfter,
-            'clientKey' => $payload->clientKey,
-            'options' => $payload->options,
-        ], JSON_THROW_ON_ERROR));
+        if ($this->defaultIdempotencyPrefix === null || $this->defaultIdempotencyPrefix === '') {
+            return $key;
+        }
+
+        return $this->defaultIdempotencyPrefix.'-'.$key;
     }
 
     private function createPrintJob(
@@ -239,7 +258,12 @@ final readonly class PrintManager
         $context['printJobId'] = $result->printJobId;
         $context['requestId'] = $result->requestId;
 
-        $this->logger->info('PrintNode print job dispatched.', $context);
+        $this->logger->info(
+            $result->wasAlreadySent()
+                ? 'PrintNode print job was already sent with this idempotency key.'
+                : 'PrintNode print job dispatched.',
+            $context,
+        );
     }
 
     private function logFailedDispatch(PrintDispatchContext $dispatchContext, Throwable $throwable): void

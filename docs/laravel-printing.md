@@ -207,6 +207,19 @@ Only you know when two prints are the same print. A reprint, or a second drawer 
 
 Requests with a key are also the only print jobs the connector retries (see `tries` in the config). Without a key, a retry could print the same document twice.
 
+## Time-sensitive prints and copies
+
+When a printer's computer is offline, PrintNode keeps the job and prints it once the computer is back: for 14 days by default. For a receipt that is rarely what you want, so give it a shorter life in seconds:
+
+```php
+DispatchPrint::printer(123)
+    ->idempotencyKey("receipt-{$receipt->id}")
+    ->expireAfter(300)
+    ->raw($escPos, title: "Receipt {$receipt->number}");
+```
+
+Print options such as `copies` have no effect on raw jobs (ESC/POS, ZPL). Use `->qty(2)` instead: PrintNode then sends the job to the printer twice.
+
 ## Environment policy
 
 The guard is on by default, so a local or staging install does not print on real printers by accident. Outside the allowed environments a print returns a skipped `PrintResult` (`wasSkipped()`), without calling the PrintNode API. If a test server should print, add its environment:

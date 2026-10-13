@@ -49,7 +49,8 @@ it('exposes pending print configuration and alternative raw helpers', function (
         ])
         ->idempotencyKey('custom-id')
         ->contentTypeHeader('application/pdf')
-        ->expireAfter('600')
+        ->expireAfter(600)
+        ->qty(2)
         ->clientKey('client-1');
 
     $firstResult = $pending->rawBase64('cmF3LWJhc2U2NA==', title: 'Base64 label');
@@ -68,7 +69,8 @@ it('exposes pending print configuration and alternative raw helpers', function (
         ])
         ->and($pending->configuredIdempotencyKey())->toBe('custom-id')
         ->and($pending->configuredContentTypeHeader())->toBe('application/pdf')
-        ->and($pending->configuredExpireAfter())->toBe('600')
+        ->and($pending->configuredExpireAfter())->toBe(600)
+        ->and($pending->configuredQty())->toBe(2)
         ->and($pending->configuredClientKey())->toBe('client-1')
         ->and($firstResult->printJobId)->toBe(1006)
         ->and($firstResult->source)->toBe('Custom source')
@@ -86,13 +88,14 @@ it('exposes pending print configuration and alternative raw helpers', function (
             'content' => 'cmF3LWJhc2U2NA==',
             'source' => 'Custom source',
             'contentTypeHeader' => 'application/pdf',
-            'expireAfter' => '600',
+            'expireAfter' => 600,
             'clientKey' => 'client-1',
             'options' => [
                 'copies' => 2,
                 'duplex' => 'long-edge',
                 'tray' => 'rear',
             ],
+            'qty' => 2,
         ] && $headers['X-Idempotency-Key'] === 'custom-id';
     });
 

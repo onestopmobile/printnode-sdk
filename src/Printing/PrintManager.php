@@ -74,6 +74,7 @@ final readonly class PrintManager
             expireAfter: $pendingPrint->configuredExpireAfter(),
             clientKey: $pendingPrint->configuredClientKey(),
             options: $options,
+            qty: $pendingPrint->configuredQty(),
         );
 
         $idempotencyKey = $this->idempotencyKey($pendingPrint);

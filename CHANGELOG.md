@@ -2,13 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
-
-- Add environment-aware print dispatch policy support.
-- Add PSR-3 and Laravel-channel based print observability.
-- Add Laravel config support for default child-account context.
-- Add semantic `zpl()` and `zplBase64()` print helpers.
-- Tighten identifier-set validation and response/error handling.
+## 0.3.0 - 2026-10-14
 
 ### Breaking changes
 
@@ -35,3 +29,11 @@ All notable changes to this project will be documented in this file.
 - `ChildAccountContext::parentAccount()` to run a call as the integrator account.
 - A child account per print: `ResolvedPrintTarget::$childAccount` and `PendingPrint::childAccount()`.
 - `PendingPrint::qty()` and `CreatePrintJobPayload::$qty`, the only way to print multiple copies of a raw job.
+
+## 0.2.0 and earlier
+
+- Add environment-aware print dispatch policy support.
+- Add PSR-3 and Laravel-channel based print observability.
+- Add Laravel config support for default child-account context.
+- Add semantic `zpl()` and `zplBase64()` print helpers.
+- Tighten identifier-set validation and response/error handling.

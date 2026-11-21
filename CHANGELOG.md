@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - `account()->update()`, `setState()`, `setTag()`, `deleteTag()`, `createApiKey()` and `deleteApiKey()` need the account they change. Without one they ran in the connector's default child account, or in the integrator account when there was no default. Pass `ChildAccountContext::parentAccount()` to change the integrator account on purpose.
 - `account()->setState()` refuses `ChildAccountContext::parentAccount()`: suspending the integrator account would stop printing for every child account.
+- Requires `saloonphp/saloon` ^4.4 (was ^4.0): waiting for `Retry-After` uses `Saloon\Config::sleep()`, which 4.4.0 added.
 - A connection that fails or times out after the last attempt throws `ConnectionException` (a `PrintNodeException`) instead of Saloon's `FatalRequestException`. The Saloon exception is its `getPrevious()`.
 
 ### Fixed

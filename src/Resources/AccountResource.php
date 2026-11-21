@@ -34,7 +34,12 @@ final readonly class AccountResource extends AbstractResource
         );
     }
 
-    public function update(UpdateChildAccountPayload $payload, ?ChildAccountContext $childAccount = null): AccountData
+    /**
+     * Every call that changes an account names that account. Without one, it would run in the
+     * connector's default child account or, without a default, in the integrator account behind
+     * your API key. Pass ChildAccountContext::parentAccount() to change the integrator account itself.
+     */
+    public function update(UpdateChildAccountPayload $payload, ChildAccountContext $childAccount): AccountData
     {
         return AccountData::fromArray(
             $this->mapResponse(
@@ -76,8 +81,16 @@ final readonly class AccountResource extends AbstractResource
         );
     }
 
-    public function setState(AccountState|string $state, ?ChildAccountContext $childAccount = null): void
+    /**
+     * Suspend or reactivate a child account. Refuses the integrator account: suspending that one
+     * would stop printing for every child account.
+     */
+    public function setState(AccountState|string $state, ChildAccountContext $childAccount): void
     {
+        if ($childAccount->isParentAccount()) {
+            throw new InvalidArgumentException('Pass the child account to suspend or activate. The SDK does not change the state of the integrator account itself.');
+        }
+
         $value = $state instanceof AccountState ? $state->value : $state;
 
         $this->send(new StringBodyEndpointRequest(
@@ -97,7 +110,7 @@ final readonly class AccountResource extends AbstractResource
         );
     }
 
-    public function setTag(string $name, string $value, ?ChildAccountContext $childAccount = null): string
+    public function setTag(string $name, string $value, ChildAccountContext $childAccount): string
     {
         return $this->stringResponse(
             $this->send(new StringBodyEndpointRequest(
@@ -111,7 +124,7 @@ final readonly class AccountResource extends AbstractResource
         );
     }
 
-    public function deleteTag(string $name, ?ChildAccountContext $childAccount = null): string
+    public function deleteTag(string $name, ChildAccountContext $childAccount): string
     {
         return $this->stringResponse(
             $this->send(new EndpointRequest(Method::DELETE, '/account/tag/'.rawurlencode($name), $childAccount)),
@@ -127,7 +140,7 @@ final readonly class AccountResource extends AbstractResource
         );
     }
 
-    public function createApiKey(string $description, ?ChildAccountContext $childAccount = null): string
+    public function createApiKey(string $description, ChildAccountContext $childAccount): string
     {
         return $this->stringResponse(
             $this->send(new EndpointRequest(Method::POST, '/account/apikey/'.rawurlencode($description), $childAccount)),
@@ -135,7 +148,7 @@ final readonly class AccountResource extends AbstractResource
         );
     }
 
-    public function deleteApiKey(string $description, ?ChildAccountContext $childAccount = null): string
+    public function deleteApiKey(string $description, ChildAccountContext $childAccount): string
     {
         return $this->stringResponse(
             $this->send(new EndpointRequest(Method::DELETE, '/account/apikey/'.rawurlencode($description), $childAccount)),

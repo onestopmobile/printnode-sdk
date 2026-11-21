@@ -7,11 +7,11 @@ namespace OneStopMobile\PrintNodeSdk\Resources;
 use OneStopMobile\PrintNodeSdk\Data\PrintJobData;
 use OneStopMobile\PrintNodeSdk\Data\PrintJobStateData;
 use OneStopMobile\PrintNodeSdk\Exceptions\ConflictException;
+use OneStopMobile\PrintNodeSdk\Exceptions\ConnectionException;
 use OneStopMobile\PrintNodeSdk\Exceptions\DuplicatePrintJobException;
 use OneStopMobile\PrintNodeSdk\Http\Requests\AbstractPrintNodeRequest;
 use OneStopMobile\PrintNodeSdk\Http\Requests\EndpointRequest;
 use OneStopMobile\PrintNodeSdk\Http\Requests\JsonEndpointRequest;
-use OneStopMobile\PrintNodeSdk\Http\Responses\PrintNodeResponse;
 use OneStopMobile\PrintNodeSdk\Payloads\CreatePrintJobPayload;
 use OneStopMobile\PrintNodeSdk\Values\ChildAccountContext;
 use OneStopMobile\PrintNodeSdk\Values\CommaSeparatedIdSet;
@@ -65,6 +65,7 @@ final readonly class PrintJobsResource extends AbstractResource
      * @internal Exposes request metadata for higher-level workflows like PrintManager.
      *
      * @throws DuplicatePrintJobException when PrintNode already accepted a job with this idempotency key
+     * @throws ConnectionException when PrintNode could not be reached; the job may or may not have arrived
      */
     public function createWithMetadata(
         CreatePrintJobPayload $payload,
@@ -73,8 +74,7 @@ final readonly class PrintJobsResource extends AbstractResource
     ): CreatedPrintJobResult {
         $idempotencyKey = $this->idempotencyKeyHeader($idempotencyKey);
 
-        /** @var PrintNodeResponse $response */
-        $response = $this->connector->send($this->createRequest($payload, $idempotencyKey, $childAccount));
+        $response = $this->sendRequest($this->createRequest($payload, $idempotencyKey, $childAccount));
 
         try {
             $printJob = $response->dtoOrThrow();

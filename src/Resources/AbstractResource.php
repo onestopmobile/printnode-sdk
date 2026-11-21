@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace OneStopMobile\PrintNodeSdk\Resources;
 
+use OneStopMobile\PrintNodeSdk\Exceptions\ConnectionException;
 use OneStopMobile\PrintNodeSdk\Http\PrintNodeConnector;
 use OneStopMobile\PrintNodeSdk\Http\Requests\AbstractPrintNodeRequest;
 use OneStopMobile\PrintNodeSdk\Http\Responses\PrintNodeResponse;
+use Saloon\Exceptions\Request\FatalRequestException;
 use UnexpectedValueException;
 
 abstract readonly class AbstractResource
@@ -17,10 +19,25 @@ abstract readonly class AbstractResource
 
     protected function send(AbstractPrintNodeRequest $request): mixed
     {
-        /** @var PrintNodeResponse $response */
-        $response = $this->connector->send($request);
+        return $this->sendRequest($request)->dtoOrThrow();
+    }
 
-        return $response->dtoOrThrow();
+    /**
+     * Every failure comes out as one of the SDK's exceptions: a connection that fails or times out
+     * (after the last attempt) is a ConnectionException, not Saloon's FatalRequestException.
+     *
+     * @throws ConnectionException
+     */
+    protected function sendRequest(AbstractPrintNodeRequest $request): PrintNodeResponse
+    {
+        try {
+            /** @var PrintNodeResponse $response */
+            $response = $this->connector->send($request);
+        } catch (FatalRequestException $fatalRequestException) {
+            throw ConnectionException::from($fatalRequestException);
+        }
+
+        return $response;
     }
 
     protected function stringResponse(mixed $payload, string $context): string

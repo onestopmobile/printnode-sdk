@@ -8,6 +8,7 @@ use OneStopMobile\PrintNodeSdk\Payloads\DownloadClientPatchPayload;
 use OneStopMobile\PrintNodeSdk\Payloads\WebhookPayload;
 use OneStopMobile\PrintNodeSdk\PrintNodeConfig;
 use OneStopMobile\PrintNodeSdk\PrintNodeSdk;
+use OneStopMobile\PrintNodeSdk\Values\ChildAccountContext;
 use Saloon\Http\Faking\MockClient;
 use Saloon\Http\Faking\MockResponse;
 
@@ -69,7 +70,7 @@ it('handles account, download, scale, webhook and misc endpoints', function (): 
 
     $whoAmI = $sdk->whoAmI();
     $state = $sdk->account()->getState();
-    $sdk->account()->setState(AccountState::Active);
+    $sdk->account()->setState(AccountState::Active, ChildAccountContext::byCreatorRef('store-1'));
     $tag = $sdk->account()->getTag('favorite');
     $apiKey = $sdk->account()->getApiKey('warehouse');
     $clientKey = $sdk->account()->clientKey('client-123', version: '4.7.1', edition: 'printnode');

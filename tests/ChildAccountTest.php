@@ -3,10 +3,13 @@
 declare(strict_types=1);
 
 use OneStopMobile\PrintNodeSdk\Contracts\ResolvesPrintTarget;
+use OneStopMobile\PrintNodeSdk\Enums\AccountState;
 use OneStopMobile\PrintNodeSdk\Payloads\CreateChildAccountPayload;
+use OneStopMobile\PrintNodeSdk\Payloads\UpdateChildAccountPayload;
 use OneStopMobile\PrintNodeSdk\Printing\ResolvedPrintTarget;
 use OneStopMobile\PrintNodeSdk\PrintNodeConfig;
 use OneStopMobile\PrintNodeSdk\PrintNodeSdk;
+use OneStopMobile\PrintNodeSdk\Resources\AccountResource;
 use OneStopMobile\PrintNodeSdk\Values\ChildAccountContext;
 use Saloon\Enums\Method;
 use Saloon\Http\Faking\MockClient;
@@ -90,6 +93,45 @@ it('refuses to delete the integrator account', function (): void {
         ->toThrow(InvalidArgumentException::class, 'Pass the child account to delete.');
     $mockClient->assertNothingSent();
 });
+
+it('refuses to suspend the integrator account', function (): void {
+    $sdk = sdkWithDefaultChildAccount();
+    $mockClient = new MockClient([MockResponse::make('')]);
+    $sdk->connector()->withMockClient($mockClient);
+
+    expect(fn () => $sdk->account()->setState(AccountState::Suspended, ChildAccountContext::parentAccount()))
+        ->toThrow(InvalidArgumentException::class, 'Pass the child account to suspend or activate.');
+    $mockClient->assertNothingSent();
+});
+
+it('sends an account change to the account it names, not the default child account', function (): void {
+    $sdk = sdkWithDefaultChildAccount();
+    $mockClient = new MockClient([MockResponse::make(['id' => 7, 'email' => 'store@example.com'])]);
+    $sdk->connector()->withMockClient($mockClient);
+
+    $sdk->account()->update(new UpdateChildAccountPayload(email: 'store@example.com'), ChildAccountContext::byCreatorRef('store-7'));
+
+    expect(sentChildAccountHeaders($mockClient))->toBe(['X-Child-Account-By-CreatorRef' => 'store-7']);
+});
+
+it('changes the integrator account only when asked for by name', function (): void {
+    $sdk = sdkWithDefaultChildAccount();
+    $mockClient = new MockClient([MockResponse::make(['id' => 1, 'email' => 'integrator@example.com'])]);
+    $sdk->connector()->withMockClient($mockClient);
+
+    $sdk->account()->update(new UpdateChildAccountPayload(email: 'integrator@example.com'), ChildAccountContext::parentAccount());
+
+    expect(sentChildAccountHeaders($mockClient))->toBe([]);
+});
+
+it('needs an account for every call that changes one', function (string $method): void {
+    $parameters = new ReflectionMethod(AccountResource::class, $method)->getParameters();
+    $last = array_last($parameters);
+
+    expect($last->getName())->toBe('childAccount')
+        ->and($last->allowsNull())->toBeFalse()
+        ->and($last->isOptional())->toBeFalse();
+})->with(['update', 'delete', 'setState', 'setTag', 'deleteTag', 'createApiKey', 'deleteApiKey']);
 
 it('leaves requests that were not built by the SDK alone', function (): void {
     $sdk = sdkWithDefaultChildAccount();

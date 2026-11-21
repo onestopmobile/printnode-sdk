@@ -209,17 +209,17 @@ Entry point: `PrintNodeSdk::account(): AccountResource`
 | SDK method | PrintNode endpoint | Returns | Notes |
 | --- | --- | --- | --- |
 | `create(CreateChildAccountPayload $payload)` | `POST /account` | `CreatedChildAccountData` | Creates a child account under the authenticated account. This method does not accept `ChildAccountContext`. |
-| `update(UpdateChildAccountPayload $payload, ?ChildAccountContext $childAccount = null)` | `PATCH /account` | `AccountData` | Use `ChildAccountContext` when updating a specific child account. |
+| `update(UpdateChildAccountPayload $payload, ChildAccountContext $childAccount)` | `PATCH /account` | `AccountData` | The account is required. Pass `ChildAccountContext::parentAccount()` to change the integrator account itself. |
 | `delete(ChildAccountContext $childAccount)` | `DELETE /account` | `void` | Deletes the given child account. Passing `ChildAccountContext::parentAccount()` throws, so the integrator account is never deleted by accident. |
 | `controllable(?ChildAccountContext $childAccount = null)` | `GET /account/controllable` | `list<AccountData>` | Lists child accounts the current account can control. |
 | `getState(?ChildAccountContext $childAccount = null)` | `GET /account/state` | `string` | Reads the current account state. |
-| `setState(AccountState|string $state, ?ChildAccountContext $childAccount = null)` | `PUT /account/state` | `void` | Accepts either the enum or a raw API state string. |
+| `setState(AccountState|string $state, ChildAccountContext $childAccount)` | `PUT /account/state` | `void` | Accepts either the enum or a raw API state string. Passing `ChildAccountContext::parentAccount()` throws: suspending the integrator account would stop printing for every child account. |
 | `getTag(string $name, ?ChildAccountContext $childAccount = null)` | `GET /account/tag/{name}` | `string` | Reads one account tag value. |
-| `setTag(string $name, string $value, ?ChildAccountContext $childAccount = null)` | `POST /account/tag/{name}` | `string` | Writes one account tag value. |
-| `deleteTag(string $name, ?ChildAccountContext $childAccount = null)` | `DELETE /account/tag/{name}` | `string` | Deletes one tag by name. |
+| `setTag(string $name, string $value, ChildAccountContext $childAccount)` | `POST /account/tag/{name}` | `string` | Writes one account tag value. The account is required. |
+| `deleteTag(string $name, ChildAccountContext $childAccount)` | `DELETE /account/tag/{name}` | `string` | Deletes one tag by name. |
 | `getApiKey(string $description, ?ChildAccountContext $childAccount = null)` | `GET /account/apikey/{description}` | `string` | Reads an API key value by description. |
-| `createApiKey(string $description, ?ChildAccountContext $childAccount = null)` | `POST /account/apikey/{description}` | `string` | Creates an API key with the given description. |
-| `deleteApiKey(string $description, ?ChildAccountContext $childAccount = null)` | `DELETE /account/apikey/{description}` | `string` | Deletes an API key by description. |
+| `createApiKey(string $description, ChildAccountContext $childAccount)` | `POST /account/apikey/{description}` | `string` | Creates an API key with the given description. The account is required. |
+| `deleteApiKey(string $description, ChildAccountContext $childAccount)` | `DELETE /account/apikey/{description}` | `string` | Deletes an API key by description. |
 | `clientKey(string $key, ?string $version = null, ?string $edition = null, ?ChildAccountContext $childAccount = null)` | `GET /client/key/{key}` | `string` | Sends `version` and `edition` as query parameters. |
 
 Child-account creation example:

@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.4.0 - 2026-11-21
+
+### Breaking changes
+
+- `account()->update()`, `setState()`, `setTag()`, `deleteTag()`, `createApiKey()` and `deleteApiKey()` need the account they change. Without one they ran in the connector's default child account, or in the integrator account when there was no default. Pass `ChildAccountContext::parentAccount()` to change the integrator account on purpose.
+- `account()->setState()` refuses `ChildAccountContext::parentAccount()`: suspending the integrator account would stop printing for every child account.
+- A connection that fails or times out after the last attempt throws `ConnectionException` (a `PrintNodeException`) instead of Saloon's `FatalRequestException`. The Saloon exception is its `getPrevious()`.
+
+### Fixed
+
+- After a 429 the connector waits as long as `Retry-After` asks (one second when it does not say) before it tries again, instead of only the configured interval (0 ms by default). A `Retry-After` longer than 10 seconds ends the attempts with a `RateLimitException`, so a queued job can come back later instead of holding a worker.
+
+### Docs
+
+- `wasAlreadySent()` means PrintNode received the job earlier, not that it printed: give a reprint its own key.
+- Send documents with personal data with `pdfBase64()`: with `pdfUrl()` PrintNode downloads the file from a public address.
+- Titles and print options are logged as they are, so keep personal data out of a title.
+
 ## 0.3.0 - 2026-10-14
 
 ### Breaking changes

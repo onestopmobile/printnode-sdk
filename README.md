@@ -277,7 +277,9 @@ When logging is enabled, the package logs metadata such as printer id, title, co
 
 ## Error handling
 
-Failed API responses are mapped to SDK exceptions:
+Failed API responses are mapped to SDK exceptions. All of them extend `PrintNodeException`:
+
+- `ConnectionException`, when PrintNode could not be reached or the connection broke before an answer (after the last attempt); the request may or may not have arrived
 
 - `AuthenticationException`
 - `AuthorizationException`
@@ -291,7 +293,7 @@ Failed API responses are mapped to SDK exceptions:
 - `UnresolvablePrintTargetException`
 - `IncompletePrintJobException`
 
-`RateLimitException` also exposes the raw `Retry-After` header when the API provides one.
+`RateLimitException` also exposes the raw `Retry-After` header when the API provides one. With `tries` above 1 the connector waits for a `Retry-After` of up to 10 seconds itself; a longer one ends the attempts with this exception.
 
 ## Development scripts
 

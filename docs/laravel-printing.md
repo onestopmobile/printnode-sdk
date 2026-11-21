@@ -51,6 +51,12 @@ final class PrintPackingSlipAction
 }
 ```
 
+With `pdfUrl()` PrintNode downloads the PDF itself, so the URL has to be reachable from the internet. For a document with personal data (an invoice, a repair form) send the file along instead, so it never needs a public address:
+
+```php
+DispatchPrint::printer(123)->pdfBase64(base64_encode($pdf), title: 'Invoice 2026-0042');
+```
+
 ## Raw printing
 
 Use `raw(...)` when you have direct printer language content like ZPL.
@@ -201,11 +207,17 @@ $result = DispatchPrint::printer(123)
 
 PrintNode remembers keys for 24 hours. When the same key comes in again, it does not print a second time, and you get a `PrintResult` where `wasAlreadySent()` is true. That is not an error: the earlier attempt reached PrintNode, so nothing is missing. PrintNode does not return the earlier job's id, so `printJobId` is null. The lower-level `printJobs()->create()` throws a `DuplicatePrintJobException` (a `ConflictException`) in that case.
 
-Only you know when two prints are the same print. A reprint, or a second drawer kick with identical bytes, should not be blocked, so the package never invents a key. Prints without a key are always sent.
+`wasAlreadySent()` means PrintNode received the job earlier, not that paper came out. PrintNode does not compare the content: with the same key it never prints again, also when the earlier job expired (`expireAfter`) or failed at the printer. Read `printJobs()->states()` when you need to know what happened to it.
+
+Only you know when two prints are the same print. A reprint, or a second drawer kick with identical bytes, should not be blocked, so the package never invents a key. Prints without a key are always sent. Give a reprint its own key (`receipt-1001-reprint-2`), or no key at all.
 
 `default_idempotency_prefix` is put in front of every key you set (`my-app-receipt-1001`), so two apps that share a PrintNode account cannot block each other with the same key.
 
 Requests with a key are also the only print jobs the connector retries (see `tries` in the config). Without a key, a retry could print the same document twice.
+
+After a 429 the connector waits as long as PrintNode's `Retry-After` asks (one second when it does not say) before the next attempt. When PrintNode asks for more than `PrintNodeConnector::MAX_RETRY_AFTER_SECONDS` (10), it stops and throws a `RateLimitException` with `retryAfter`, so a queued job can come back later instead of holding a worker.
+
+When the connection fails or times out, you get a `ConnectionException`. It is not known whether PrintNode received the job then: try again with the same key, for example by letting the queued job fail and retry.
 
 ## Time-sensitive prints and copies
 
@@ -278,6 +290,8 @@ Optional metadata:
 - payload hash
 
 The package does not log raw ZPL/PDF content unless your application adds that itself.
+
+The title and the print options are logged as they are. Do not put a customer's name or other personal data in a title: use a number (`Receipt 1001`).
 
 ## Child-account defaults
 
@@ -360,7 +374,9 @@ Package-level printing abstraction errors:
 - `UnresolvablePrintTargetException`
 - `IncompletePrintJobException`
 
-PrintNode API errors still use the SDK exception tree:
+PrintNode API errors still use the SDK exception tree. Every one of them, and `ConnectionException`, extends `PrintNodeException`:
+
+- `ConnectionException` (PrintNode could not be reached, or the connection broke before an answer; the job may or may not have arrived)
 
 - `AuthenticationException`
 - `AuthorizationException`

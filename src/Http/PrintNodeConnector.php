@@ -8,6 +8,7 @@ use OneStopMobile\PrintNodeSdk\Http\Requests\AbstractPrintNodeRequest;
 use OneStopMobile\PrintNodeSdk\PrintNodeConfig;
 use OneStopMobile\PrintNodeSdk\Values\ChildAccountContext;
 use Override;
+use Saloon\Config;
 use Saloon\Contracts\Authenticator;
 use Saloon\Enums\Method;
 use Saloon\Exceptions\Request\FatalRequestException;
@@ -23,6 +24,18 @@ final class PrintNodeConnector extends Connector
 {
     use HasTimeout;
     use HasTries;
+
+    /**
+     * The longest Retry-After the connector waits for itself. A longer one ends the attempts with a
+     * RateLimitException that carries Retry-After, so a queued job can come back later instead of
+     * holding a worker.
+     */
+    public const int MAX_RETRY_AFTER_SECONDS = 10;
+
+    /**
+     * How long to wait after a 429 that does not say how long.
+     */
+    public const int DEFAULT_RATE_LIMIT_WAIT_SECONDS = 1;
 
     public float $connectTimeout;
 
@@ -77,11 +90,30 @@ final class PrintNodeConnector extends Connector
      * failures that tend to go away on their own. A print job without an idempotency key is never
      * repeated: if PrintNode accepted it just before the connection dropped, a retry would print
      * the same receipt or label a second time.
+     *
+     * After a 429 the connector waits as long as PrintNode asks (Retry-After) before the next attempt,
+     * on top of the configured interval, and stops when that is longer than MAX_RETRY_AFTER_SECONDS.
      */
     #[Override]
     public function handleRetry(FatalRequestException|RequestException $exception, Request $request): bool
     {
-        return $this->isSafeToRepeat($request) && $this->isTemporaryFailure($exception);
+        if (! $this->isSafeToRepeat($request) || ! $this->isTemporaryFailure($exception)) {
+            return false;
+        }
+
+        if (! $exception instanceof RequestException || $exception->getResponse()->status() !== 429) {
+            return true;
+        }
+
+        $seconds = $this->secondsToWait($exception->getResponse()->header('Retry-After'));
+
+        if ($seconds > self::MAX_RETRY_AFTER_SECONDS) {
+            return false;
+        }
+
+        Config::sleep($seconds * 1_000_000);
+
+        return true;
     }
 
     protected function defaultHeaders(): array
@@ -102,6 +134,22 @@ final class PrintNodeConnector extends Connector
     {
         return $request->getMethod() === Method::GET
             || $request->headers()->get(AbstractPrintNodeRequest::IDEMPOTENCY_KEY_HEADER) !== null;
+    }
+
+    /**
+     * Retry-After is either a number of seconds or an HTTP date.
+     */
+    private function secondsToWait(mixed $retryAfter): int
+    {
+        $value = is_string($retryAfter) ? trim($retryAfter) : '';
+
+        if ($value !== '' && ctype_digit($value)) {
+            return (int) $value;
+        }
+
+        $time = $value === '' ? false : strtotime($value);
+
+        return $time === false ? self::DEFAULT_RATE_LIMIT_WAIT_SECONDS : max(0, $time - time());
     }
 
     private function isTemporaryFailure(FatalRequestException|RequestException $exception): bool
